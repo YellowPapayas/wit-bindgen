@@ -15,6 +15,7 @@ use wit_bindgen_core::{
 
 mod bindgen;
 mod interface;
+mod annotations;
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`

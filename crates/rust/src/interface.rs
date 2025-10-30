@@ -1,5 +1,6 @@
 use crate::bindgen::{FunctionBindgen, POINTER_SIZE_EXPRESSION};
 use crate::{
+    annotations,
     classify_constructor_return_type, full_wit_type_name, int_repr, to_rust_ident,
     to_upper_camel_case, wasm_type, ConstructorReturnType, FnSig, Identifier, InterfaceName,
     Ownership, RuntimeItem, RustFlagsRepr, RustWasm, TypeGeneration,
@@ -179,6 +180,9 @@ impl<'i> InterfaceGenerator<'i> {
                 ..Default::default()
             };
             sig.update_for_func(&func);
+            for annotation in annotations::get_annotations_for_language(&func.stability, "rust") {
+                uwriteln!(self.src, "{}", annotation);
+            }
             self.print_signature(func, true, &sig);
             self.src.push_str(";\n");
             let trait_method = mem::replace(&mut self.src, prev);
@@ -704,6 +708,11 @@ pub mod vtable{ordinal} {{
             sig.use_item_name = true;
             sig.update_for_func(&func);
         }
+
+        for annotation in annotations::get_annotations_for_language(&func.stability, "rust") {
+            uwriteln!(self.src, "{}", annotation);
+        }
+
         self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
         let params = self.print_signature(func, async_, &sig);
         self.src.push_str("{\n");
@@ -2574,6 +2583,11 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
     }
 
     fn type_record(&mut self, id: TypeId, _name: &str, record: &Record, docs: &Docs) {
+        let typedef = &self.resolve.types[id];
+        for annotation in annotations::get_all_annotations_for_language(&typedef.stability, "rust") {
+            uwriteln!(self.src, "{}", annotation);
+        }
+
         self.print_typedef_record(id, record, docs);
     }
 
@@ -2788,6 +2802,10 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_flags(&mut self, _id: TypeId, name: &str, flags: &Flags, docs: &Docs) {
+        let typedef = &self.resolve.types[_id];
+        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
+            uwriteln!(self.src, "{}", annotation);
+        }
         self.src.push_str(&format!(
             "{bitflags}::bitflags! {{\n",
             bitflags = self.r#gen.bitflags_path()
@@ -2811,6 +2829,10 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_variant(&mut self, id: TypeId, _name: &str, variant: &Variant, docs: &Docs) {
+        let typedef = &self.resolve.types[id];
+        for annotation in annotations::get_all_annotations_for_language(&typedef.stability, "rust") {
+            uwriteln!(self.src, "{}", annotation);
+        }
         self.print_typedef_variant(id, variant, docs);
     }
 
@@ -2823,6 +2845,10 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_enum(&mut self, id: TypeId, name: &str, enum_: &Enum, docs: &Docs) {
+        let typedef = &self.resolve.types[id];
+        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
+            uwriteln!(self.src, "{}", annotation);
+        }
         self.print_typedef_enum(id, name, enum_, docs, &[], Box::new(|_| String::new()));
 
         let name = to_upper_camel_case(name);

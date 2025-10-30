@@ -90,3 +90,11 @@ csharp-mono = ['csharp']
 moonbit = ['dep:wit-bindgen-moonbit']
 async = []
 
+# Override wit-parser to use local wasm-tools with annotation support
+[patch.crates-io]
+wit-parser = { path = "../wasm-tools/crates/wit-parser" }
+wit-component = { path = "../wasm-tools/crates/wit-component" }
+wasmparser = { path = "../wasm-tools/crates/wasmparser" }
+wasm-encoder = { path = "../wasm-tools/crates/wasm-encoder" }
+wasm-metadata = { path = "../wasm-tools/crates/wasm-metadata" }
+wat = { path = "../wasm-tools/crates/wat" }
