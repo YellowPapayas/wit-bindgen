@@ -31,3 +31,16 @@ pub fn has_annotations_for_language(stability: &Stability, language: &str) -> bo
         _ => false,
     }
 }
+
+pub fn get_rust_annotations(stability: &Stability) -> Vec<String> {
+    match stability {
+        Stability::Annotated { annotations } => {
+            annotations
+                .iter()
+                .filter(|(lang, _)| lang == "rust")
+                .map(|(_, value)| value.clone())
+                .collect()
+        }
+        _ => Vec::new(),
+    }
+}
