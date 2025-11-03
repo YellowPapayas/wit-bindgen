@@ -2591,7 +2591,12 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
         self.print_typedef_record(id, record, docs);
     }
 
-    fn type_resource(&mut self, _id: TypeId, name: &str, docs: &Docs) {
+    fn type_resource(&mut self, id: TypeId, name: &str, docs: &Docs) {
+        let typedef = &self.resolve.types[id];
+        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
+            uwriteln!(self.src, "{}", annotation);
+        }
+
         self.rustdoc(docs);
         let camel = to_upper_camel_case(name);
         let resource = self.path_to_resource();
