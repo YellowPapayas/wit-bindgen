@@ -6,7 +6,7 @@ pub fn get_annotations_for_language(stability: &Stability, language: &str) -> Ve
     match stability {
         Stability::Annotated { annotations } => annotations
             .iter()
-            // filter to only annottaions matching target language
+            // filter to only annotations matching target language
             .filter(|(key, _)| key == language)
             // extract just the annotation values, discard language key
             .map(|(_, value)| value.clone())
