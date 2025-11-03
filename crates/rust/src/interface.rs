@@ -2584,7 +2584,7 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
 
     fn type_record(&mut self, id: TypeId, _name: &str, record: &Record, docs: &Docs) {
         let typedef = &self.resolve.types[id];
-        for annotation in annotations::get_all_annotations_for_language(&typedef.stability, "rust") {
+        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
             uwriteln!(self.src, "{}", annotation);
         }
 
@@ -2830,7 +2830,7 @@ impl<'a> {camel}Borrow<'a>{{
 
     fn type_variant(&mut self, id: TypeId, _name: &str, variant: &Variant, docs: &Docs) {
         let typedef = &self.resolve.types[id];
-        for annotation in annotations::get_all_annotations_for_language(&typedef.stability, "rust") {
+        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
             uwriteln!(self.src, "{}", annotation);
         }
         self.print_typedef_variant(id, variant, docs);
