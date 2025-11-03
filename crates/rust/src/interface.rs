@@ -180,9 +180,6 @@ impl<'i> InterfaceGenerator<'i> {
                 ..Default::default()
             };
             sig.update_for_func(&func);
-            for annotation in annotations::get_annotations_for_language(&func.stability, "rust") {
-                uwriteln!(self.src, "{}", annotation);
-            }
             self.print_signature(func, true, &sig);
             self.src.push_str(";\n");
             let trait_method = mem::replace(&mut self.src, prev);
@@ -707,10 +704,6 @@ pub mod vtable{ordinal} {{
             uwriteln!(self.src, "impl {name} {{");
             sig.use_item_name = true;
             sig.update_for_func(&func);
-        }
-
-        for annotation in annotations::get_annotations_for_language(&func.stability, "rust") {
-            uwriteln!(self.src, "{}", annotation);
         }
 
         self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
@@ -1950,6 +1943,8 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
 
     fn print_typedef_record(&mut self, id: TypeId, record: &Record, docs: &Docs) {
         let info = self.info(id);
+        let typedef = &self.resolve.types[id];
+
         // We use a BTree set to make sure we don't have any duplicates and we have a stable order
         let additional_derives: BTreeSet<String> = self
             .r#gen
@@ -1958,6 +1953,21 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .iter()
             .cloned()
             .collect();
+
+        // Extract derive attributes from annotations
+        let annotation_derives: BTreeSet<String> = annotations::get_annotation_value(
+            &typedef.annotations,
+            "rust",
+            "derive",
+        )
+        .map(|derive_value| {
+            derive_value
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect()
+        })
+        .unwrap_or_else(BTreeSet::new);
+
         for (name, mode) in self.modes_of(id) {
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
@@ -1968,6 +1978,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 .contains(&name.to_kebab_case())
             {
                 derives.extend(additional_derives.clone());
+                derives.extend(annotation_derives.clone());
             }
             if info.is_copy() {
                 self.push_str("#[repr(C)]\n");
@@ -2061,6 +2072,8 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         Self: Sized,
     {
         let info = self.info(id);
+        let typedef = &self.resolve.types[id];
+
         // We use a BTree set to make sure we don't have any duplicates and have a stable order
         let additional_derives: BTreeSet<String> = self
             .r#gen
@@ -2069,6 +2082,21 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .iter()
             .cloned()
             .collect();
+
+        // Extract derive attributes from annotations
+        let annotation_derives: BTreeSet<String> = annotations::get_annotation_value(
+            &typedef.annotations,
+            "rust",
+            "derive",
+        )
+        .map(|derive_value| {
+            derive_value
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .collect()
+        })
+        .unwrap_or_else(BTreeSet::new);
+
         for (name, mode) in self.modes_of(id) {
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
@@ -2079,6 +2107,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 .contains(&name.to_kebab_case())
             {
                 derives.extend(additional_derives.clone());
+                derives.extend(annotation_derives.clone());
             }
             if info.is_copy() {
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
@@ -2217,6 +2246,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         Self: Sized,
     {
         let info = self.info(id);
+        let typedef = &self.resolve.types[id];
 
         let name = to_upper_camel_case(name);
         self.rustdoc(docs);
@@ -2226,6 +2256,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str("#[repr(");
         self.int_repr(enum_.tag());
         self.push_str(")]\n");
+
         // We use a BTree set to make sure we don't have any duplicates and a stable order
         let mut derives: BTreeSet<String> = BTreeSet::new();
         if !self
@@ -2235,6 +2266,12 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .contains(&name.to_kebab_case())
         {
             derives.extend(self.r#gen.opts.additional_derive_attributes.to_vec());
+            // Extract derive attributes from annotations
+            if let Some(derive_value) =
+                annotations::get_annotation_value(&typedef.annotations, "rust", "derive")
+            {
+                derives.extend(derive_value.split(',').map(|s| s.trim().to_string()));
+            }
         }
         derives.extend(
             ["Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord"]
@@ -2583,20 +2620,10 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
     }
 
     fn type_record(&mut self, id: TypeId, _name: &str, record: &Record, docs: &Docs) {
-        let typedef = &self.resolve.types[id];
-        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
-            uwriteln!(self.src, "{}", annotation);
-        }
-
         self.print_typedef_record(id, record, docs);
     }
 
     fn type_resource(&mut self, id: TypeId, name: &str, docs: &Docs) {
-        let typedef = &self.resolve.types[id];
-        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
-            uwriteln!(self.src, "{}", annotation);
-        }
-
         self.rustdoc(docs);
         let camel = to_upper_camel_case(name);
         let resource = self.path_to_resource();
@@ -2807,10 +2834,6 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_flags(&mut self, _id: TypeId, name: &str, flags: &Flags, docs: &Docs) {
-        let typedef = &self.resolve.types[_id];
-        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
-            uwriteln!(self.src, "{}", annotation);
-        }
         self.src.push_str(&format!(
             "{bitflags}::bitflags! {{\n",
             bitflags = self.r#gen.bitflags_path()
@@ -2834,10 +2857,6 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_variant(&mut self, id: TypeId, _name: &str, variant: &Variant, docs: &Docs) {
-        let typedef = &self.resolve.types[id];
-        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
-            uwriteln!(self.src, "{}", annotation);
-        }
         self.print_typedef_variant(id, variant, docs);
     }
 
@@ -2850,10 +2869,6 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_enum(&mut self, id: TypeId, name: &str, enum_: &Enum, docs: &Docs) {
-        let typedef = &self.resolve.types[id];
-        for annotation in annotations::get_annotations_for_language(&typedef.stability, "rust") {
-            uwriteln!(self.src, "{}", annotation);
-        }
         self.print_typedef_enum(id, name, enum_, docs, &[], Box::new(|_| String::new()));
 
         let name = to_upper_camel_case(name);
