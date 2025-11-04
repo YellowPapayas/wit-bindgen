@@ -1,3 +1,4 @@
+use crate::annotation_visitor::AnnotationVisitor;
 use crate::bindgen::{FunctionBindgen, POINTER_SIZE_EXPRESSION};
 use crate::{
     annotations,
@@ -15,7 +16,7 @@ use wit_bindgen_core::{
     dealias, uwrite, uwriteln, wit_parser::*, AnonymousTypeGenerator, Source, TypeInfo,
 };
 
-pub struct InterfaceGenerator<'a> {
+pub struct InterfaceGenerator<'a, V: AnnotationVisitor> {
     pub src: Source,
     pub(super) identifier: Identifier<'a>,
     pub in_import: bool,
@@ -26,6 +27,7 @@ pub struct InterfaceGenerator<'a> {
     pub return_pointer_area_size: ArchitectureSize,
     pub return_pointer_area_align: Alignment,
     pub(super) needs_runtime_module: bool,
+    pub annotation_visitor: V,
 }
 
 /// A description of the "mode" in which a type is printed.
@@ -134,7 +136,7 @@ enum PayloadFor {
     Stream,
 }
 
-impl<'i> InterfaceGenerator<'i> {
+impl<'i, V: AnnotationVisitor> InterfaceGenerator<'i, V> {
     pub(super) fn generate_exports<'a>(
         &mut self,
         interface: Option<(InterfaceId, &WorldKey)>,
@@ -181,10 +183,10 @@ impl<'i> InterfaceGenerator<'i> {
             };
             sig.update_for_func(&func);
 
-            // Output any rust annotations from WIT
-            let rust_annotations = annotations::get_all_annotations_for_language(&func.annotations, "rust");
-            for (_key, value) in rust_annotations.iter() {
-                uwriteln!(self.src, "{}", value);
+            // Output any rust annotations from WIT via visitor
+            let annotations_to_write = self.annotation_visitor.get_function_annotations(&func.annotations, func);
+            for annotation in annotations_to_write {
+                uwriteln!(self.src, "{}", annotation);
             }
 
             self.print_signature(func, true, &sig);
@@ -713,10 +715,10 @@ pub mod vtable{ordinal} {{
             sig.update_for_func(&func);
         }
 
-        // Output any rust annotations from WIT
-        let rust_annotations = annotations::get_all_annotations_for_language(&func.annotations, "rust");
-        for (_key, value) in rust_annotations.iter() {
-            uwriteln!(self.src, "{}", value);
+        // Output any rust annotations from WIT via visitor
+        let annotations_to_write = self.annotation_visitor.get_function_annotations(&func.annotations, func);
+        for annotation in annotations_to_write {
+            uwriteln!(self.src, "{}", annotation);
         }
 
         self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
@@ -1967,20 +1969,6 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
 
-        // Extract derive attributes from annotations
-        let annotation_derives: BTreeSet<String> = annotations::get_annotation_value(
-            &typedef.annotations,
-            "rust",
-            "derive",
-        )
-        .map(|derive_value| {
-            derive_value
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect()
-        })
-        .unwrap_or_else(BTreeSet::new);
-
         for (name, mode) in self.modes_of(id) {
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
@@ -1991,7 +1979,8 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 .contains(&name.to_kebab_case())
             {
                 derives.extend(additional_derives.clone());
-                derives.extend(annotation_derives.clone());
+                // Extract derive attributes from annotations via visitor
+                self.annotation_visitor.add_type_derives(&typedef.annotations, typedef, &mut derives);
             }
             if info.is_copy() {
                 self.push_str("#[repr(C)]\n");
@@ -2096,20 +2085,6 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
 
-        // Extract derive attributes from annotations
-        let annotation_derives: BTreeSet<String> = annotations::get_annotation_value(
-            &typedef.annotations,
-            "rust",
-            "derive",
-        )
-        .map(|derive_value| {
-            derive_value
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .collect()
-        })
-        .unwrap_or_else(BTreeSet::new);
-
         for (name, mode) in self.modes_of(id) {
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
@@ -2120,7 +2095,8 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 .contains(&name.to_kebab_case())
             {
                 derives.extend(additional_derives.clone());
-                derives.extend(annotation_derives.clone());
+                // Extract derive attributes from annotations via visitor
+                self.annotation_visitor.add_type_derives(&typedef.annotations, typedef, &mut derives);
             }
             if info.is_copy() {
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
@@ -2279,12 +2255,8 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .contains(&name.to_kebab_case())
         {
             derives.extend(self.r#gen.opts.additional_derive_attributes.to_vec());
-            // Extract derive attributes from annotations
-            if let Some(derive_value) =
-                annotations::get_annotation_value(&typedef.annotations, "rust", "derive")
-            {
-                derives.extend(derive_value.split(',').map(|s| s.trim().to_string()));
-            }
+            // Extract derive attributes from annotations via visitor
+            self.annotation_visitor.add_type_derives(&typedef.annotations, typedef, &mut derives);
         }
         derives.extend(
             ["Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord"]
@@ -2627,7 +2599,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
     }
 }
 
-impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
+impl<'a, V: AnnotationVisitor> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a, V> {
     fn resolve(&self) -> &'a Resolve {
         self.resolve
     }

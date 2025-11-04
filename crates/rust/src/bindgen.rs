@@ -1,3 +1,4 @@
+use crate::annotation_visitor::AnnotationVisitor;
 use crate::{
     classify_constructor_return_type, int_repr, to_rust_ident, ConstructorReturnType, Identifier,
     InterfaceGenerator, RustFlagsRepr,
@@ -8,8 +9,8 @@ use std::mem;
 use wit_bindgen_core::abi::{Bindgen, Instruction, LiftLower, WasmType};
 use wit_bindgen_core::{dealias, uwrite, uwriteln, wit_parser::*, Source};
 
-pub(super) struct FunctionBindgen<'a, 'b> {
-    pub r#gen: &'b mut InterfaceGenerator<'a>,
+pub(super) struct FunctionBindgen<'a, 'b, V: AnnotationVisitor> {
+    pub r#gen: &'b mut InterfaceGenerator<'a, V>,
     params: Vec<String>,
     wasm_import_module: &'b str,
     pub src: Source,
@@ -25,13 +26,13 @@ pub(super) struct FunctionBindgen<'a, 'b> {
 
 pub const POINTER_SIZE_EXPRESSION: &str = "::core::mem::size_of::<*const u8>()";
 
-impl<'a, 'b> FunctionBindgen<'a, 'b> {
+impl<'a, 'b, V: AnnotationVisitor> FunctionBindgen<'a, 'b, V> {
     pub(super) fn new(
-        r#gen: &'b mut InterfaceGenerator<'a>,
+        r#gen: &'b mut InterfaceGenerator<'a, V>,
         params: Vec<String>,
         wasm_import_module: &'b str,
         always_owned: bool,
-    ) -> FunctionBindgen<'a, 'b> {
+    ) -> FunctionBindgen<'a, 'b, V> {
         FunctionBindgen {
             r#gen,
             params,
@@ -192,7 +193,7 @@ impl<'a, 'b> FunctionBindgen<'a, 'b> {
     }
 }
 
-impl Bindgen for FunctionBindgen<'_, '_> {
+impl<V: AnnotationVisitor> Bindgen for FunctionBindgen<'_, '_, V> {
     type Operand = String;
 
     fn push_block(&mut self) {

@@ -16,6 +16,7 @@ use wit_bindgen_core::{
 mod bindgen;
 mod interface;
 mod annotations;
+mod annotation_visitor;
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
@@ -291,13 +292,14 @@ impl RustWasm {
         RustWasm::default()
     }
 
-    fn interface<'a>(
+    fn interface<'a, V: crate::annotation_visitor::AnnotationVisitor>(
         &'a mut self,
         identifier: Identifier<'a>,
         wasm_import_module: &'a str,
         resolve: &'a Resolve,
         in_import: bool,
-    ) -> InterfaceGenerator<'a> {
+        annotation_visitor: V,
+    ) -> InterfaceGenerator<'a, V> {
         let mut sizes = SizeAlign::default();
         sizes.fill(resolve);
 
@@ -312,6 +314,7 @@ impl RustWasm {
             return_pointer_area_size: Default::default(),
             return_pointer_area_align: Default::default(),
             needs_runtime_module: false,
+            annotation_visitor,
         }
     }
 
