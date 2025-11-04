@@ -129,7 +129,7 @@ version = "4.5.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbfd7eae0b0f1a6e63d4b13c9c478de77c2eb546fba158ad50b4203dc24b9f9c"
 dependencies = [
- "heck 0.5.0",
+ "heck",
  "proc-macro2",
  "quote",
  "syn",
@@ -145,7 +145,7 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 name = "codegen-macro"
 version = "0.0.0"
 dependencies = [
- "heck 0.5.0",
+ "heck",
  "quote",
 ]
 
@@ -347,12 +347,6 @@ name = "hashbrown"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
-
-[[package]]
-name = "heck"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "heck"
@@ -1025,11 +1019,10 @@ checksum = "8d0fcd636ad2b29a7c0490799a23ad61d1c8dedfafdb970447fddd0549502b60"
 [[package]]
 name = "wasm-compose"
 version = "0.240.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "feeb9a231e63bd5d5dfe07e9f8daa53d5c85e4f7de5ef756d3b4e6a5f501c578"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "anyhow",
- "heck 0.4.1",
+ "heck",
  "im-rc",
  "indexmap",
  "log",
@@ -1055,6 +1048,7 @@ dependencies = [
 [[package]]
 name = "wasm-encoder"
 version = "0.240.0"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "leb128fmt",
  "wasmparser 0.240.0",
@@ -1079,6 +1073,7 @@ dependencies = [
 [[package]]
 name = "wasm-metadata"
 version = "0.240.0"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -1100,6 +1095,7 @@ dependencies = [
 [[package]]
 name = "wasmparser"
 version = "0.240.0"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "bitflags",
  "hashbrown 0.15.5",
@@ -1111,6 +1107,7 @@ dependencies = [
 [[package]]
 name = "wast"
 version = "240.0.0"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "bumpalo",
  "leb128fmt",
@@ -1122,6 +1119,7 @@ dependencies = [
 [[package]]
 name = "wat"
 version = "1.240.0"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "wast",
 ]
@@ -1241,7 +1239,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck 0.5.0",
+ "heck",
  "indexmap",
  "wasm-encoder 0.240.0",
  "wasm-metadata 0.240.0",
@@ -1274,7 +1272,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck 0.5.0",
+ "heck",
  "serde",
  "wit-parser",
 ]
@@ -1285,7 +1283,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck 0.5.0",
+ "heck",
  "test-helpers",
  "wasm-encoder 0.240.0",
  "wasm-metadata 0.240.0",
@@ -1300,7 +1298,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck 0.5.0",
+ "heck",
  "indexmap",
  "wasm-metadata 0.240.0",
  "wit-bindgen-core",
@@ -1314,7 +1312,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck 0.5.0",
+ "heck",
  "pulldown-cmark",
  "wit-bindgen-core",
 ]
@@ -1325,7 +1323,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck 0.5.0",
+ "heck",
  "wit-bindgen-core",
 ]
 
@@ -1336,7 +1334,7 @@ dependencies = [
  "anyhow",
  "clap",
  "futures",
- "heck 0.5.0",
+ "heck",
  "indexmap",
  "prettyplease",
  "serde",
@@ -1368,7 +1366,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck 0.5.0",
+ "heck",
  "indexmap",
  "log",
  "rayon",
@@ -1391,6 +1389,7 @@ dependencies = [
 [[package]]
 name = "wit-component"
 version = "0.240.0"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -1409,6 +1408,7 @@ dependencies = [
 [[package]]
 name = "wit-parser"
 version = "0.240.0"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=at-annotations#18a29b7f4ce64b7e553be48fedf451c505b5b257"
 dependencies = [
  "anyhow",
  "id-arena",
@@ -1421,3 +1421,27 @@ dependencies = [
  "unicode-xid",
  "wasmparser 0.240.0",
 ]
+
+[[patch.unused]]
+name = "wasm-encoder"
+version = "0.240.0"
+
+[[patch.unused]]
+name = "wasm-metadata"
+version = "0.240.0"
+
+[[patch.unused]]
+name = "wasmparser"
+version = "0.240.0"
+
+[[patch.unused]]
+name = "wat"
+version = "1.240.0"
+
+[[patch.unused]]
+name = "wit-component"
+version = "0.240.0"
+
+[[patch.unused]]
+name = "wit-parser"
+version = "0.240.0"
