@@ -180,6 +180,13 @@ impl<'i> InterfaceGenerator<'i> {
                 ..Default::default()
             };
             sig.update_for_func(&func);
+
+            // Output any rust annotations from WIT
+            let rust_annotations = annotations::get_all_annotations_for_language(&func.annotations, "rust");
+            for (_key, value) in rust_annotations.iter() {
+                uwriteln!(self.src, "{}", value);
+            }
+
             self.print_signature(func, true, &sig);
             self.src.push_str(";\n");
             let trait_method = mem::replace(&mut self.src, prev);
@@ -704,6 +711,12 @@ pub mod vtable{ordinal} {{
             uwriteln!(self.src, "impl {name} {{");
             sig.use_item_name = true;
             sig.update_for_func(&func);
+        }
+
+        // Output any rust annotations from WIT
+        let rust_annotations = annotations::get_all_annotations_for_language(&func.annotations, "rust");
+        for (_key, value) in rust_annotations.iter() {
+            uwriteln!(self.src, "{}", value);
         }
 
         self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
