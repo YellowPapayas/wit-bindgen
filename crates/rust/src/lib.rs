@@ -143,7 +143,7 @@ fn parse_with(s: &str) -> Result<(String, WithOption), String> {
     Ok((k.to_string(), v))
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[cfg_attr(
     feature = "serde",
@@ -279,12 +279,19 @@ pub struct Opts {
     #[cfg_attr(feature = "clap", clap(flatten))]
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub async_: AsyncFilterSet,
+
+    /// Optional visitor for processing WIT annotations during code generation.
+    /// This is not a command-line option but can be set programmatically.
+    #[cfg_attr(feature = "clap", clap(skip))]
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub visitor: Option<Box<dyn WitVisitor>>,
 }
 
 impl Opts {
-    pub fn build(self) -> Box<dyn WorldGenerator> {
+    pub fn build(mut self) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
+        r.visitor = self.visitor.take();
         r.opts = self;
         Box::new(r)
     }
@@ -316,7 +323,6 @@ impl RustWasm {
             return_pointer_area_size: Default::default(),
             return_pointer_area_align: Default::default(),
             needs_runtime_module: false,
-            visitor: None,
         }
     }
 
