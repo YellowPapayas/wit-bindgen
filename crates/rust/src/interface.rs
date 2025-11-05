@@ -1,4 +1,5 @@
 use crate::bindgen::{FunctionBindgen, POINTER_SIZE_EXPRESSION};
+use crate::wit_visitor::WitVisitor;
 use crate::{
     classify_constructor_return_type, full_wit_type_name, int_repr, to_rust_ident,
     to_upper_camel_case, wasm_type, ConstructorReturnType, FnSig, Identifier, InterfaceName,
@@ -25,6 +26,8 @@ pub struct InterfaceGenerator<'a> {
     pub return_pointer_area_size: ArchitectureSize,
     pub return_pointer_area_align: Alignment,
     pub(super) needs_runtime_module: bool,
+    // optional visitor borrowed from RustWasm to process WIT annotations during generation
+    pub visitor: Option<&'a mut dyn WitVisitor>,
 }
 
 /// A description of the "mode" in which a type is printed.

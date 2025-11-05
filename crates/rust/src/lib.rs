@@ -1,4 +1,5 @@
 use crate::interface::InterfaceGenerator;
+use crate::wit_visitor::WitVisitor;
 use anyhow::{bail, Result};
 use core::panic;
 use heck::*;
@@ -15,6 +16,7 @@ use wit_bindgen_core::{
 
 mod bindgen;
 mod interface;
+pub mod wit_visitor;
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
@@ -52,6 +54,9 @@ struct RustWasm {
 
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
+
+    // optional field that contains a heap--allocated object of any type that implements the WitVisitor trait
+    visitor: Option<Box<dyn WitVisitor>>,
 }
 
 #[derive(Default)]
@@ -311,6 +316,7 @@ impl RustWasm {
             return_pointer_area_size: Default::default(),
             return_pointer_area_align: Default::default(),
             needs_runtime_module: false,
+            visitor: None,
         }
     }
 
