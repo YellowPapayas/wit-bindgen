@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-/// stores what to add to the generated code.
+/// stores what to add to the generated code
 #[derive(Default, Debug, Clone)]
 pub struct AnnotationResult {
     /// Derive macros to add (e.g., ["Clone", "Debug", "serde::Serialize"])
