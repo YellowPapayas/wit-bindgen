@@ -158,8 +158,11 @@
 //! No other changes should be necessary.
 
 mod contribution;
+mod return_types;
 
 pub use contribution::{
     FieldContribution, FunctionContribution, ModuleContribution, TypeContribution,
     VariantCaseContribution,
 };
+
+pub use return_types::{AnnotationResult, VisitAction};
