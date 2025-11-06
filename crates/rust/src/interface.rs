@@ -1,3 +1,7 @@
+use crate::annotation_visitor::{
+    FieldContribution, FunctionContribution, ModuleContribution, TypeContribution,
+    VariantCaseContribution,
+};
 use crate::bindgen::{FunctionBindgen, POINTER_SIZE_EXPRESSION};
 use crate::{
     classify_constructor_return_type, full_wit_type_name, int_repr, to_rust_ident,
@@ -10,6 +14,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::mem;
 use wit_bindgen_core::abi::{self, AbiVariant, LiftLower};
+use wit_bindgen_core::Visitor;
 use wit_bindgen_core::{
     dealias, uwrite, uwriteln, wit_parser::*, AnonymousTypeGenerator, Source, TypeInfo,
 };
@@ -25,6 +30,17 @@ pub struct InterfaceGenerator<'a> {
     pub return_pointer_area_size: ArchitectureSize,
     pub return_pointer_area_align: Alignment,
     pub(super) needs_runtime_module: bool,
+    pub visitors: Vec<
+        Box<
+            dyn Visitor<
+                    TypeContribution = TypeContribution,
+                    FieldContribution = FieldContribution,
+                    VariantCaseContribution = VariantCaseContribution,
+                    FunctionContribution = FunctionContribution,
+                    ModuleContribution = ModuleContribution,
+                > + 'a,
+        >,
+    >,
 }
 
 /// A description of the "mode" in which a type is printed.
@@ -134,6 +150,22 @@ enum PayloadFor {
 }
 
 impl<'i> InterfaceGenerator<'i> {
+    /// add multiple visitors to this interface generator and have them called during code generation
+    pub fn add_visitor(
+        &mut self,
+        visitor: Box<
+            dyn Visitor<
+                    TypeContribution = TypeContribution,
+                    FieldContribution = FieldContribution,
+                    VariantCaseContribution = VariantCaseContribution,
+                    FunctionContribution = FunctionContribution,
+                    ModuleContribution = ModuleContribution,
+                > + 'i,
+        >,
+    ) {
+        self.visitors.push(visitor);
+    }
+
     pub(super) fn generate_exports<'a>(
         &mut self,
         interface: Option<(InterfaceId, &WorldKey)>,
