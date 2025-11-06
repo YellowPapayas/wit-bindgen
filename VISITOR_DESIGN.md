@@ -23,7 +23,6 @@
 This document describes the design of a flexible **cross-language visitor trait system** for wit-bindgen code generation. The visitor pattern allows users to customize and augment generated code across all language backends (Rust, C, C++, C#, etc.) without modifying wit-bindgen's core code.
 
 The design uses a **two-layer architecture**:
-
 - **Core layer** (`wit-bindgen-core`): Generic `Visitor` trait that works with WIT types
 - **Language layer** (per-backend): Language-specific contribution types and implementations
 
@@ -128,7 +127,6 @@ pub enum VisitAction {
 ```
 
 **Key characteristics:**
-
 - Works directly with WIT types (`Record`, `Variant`, `Function`, etc.)
 - Uses **associated types** for contributions (language-specific)
 - No language-specific concepts (no "derive", no "attribute", etc.)
@@ -139,7 +137,6 @@ pub enum VisitAction {
 Each backend implements its own contribution types and enriched context:
 
 **For Rust:**
-
 ```rust
 // In wit-bindgen-rust/src/visitor/contribution.rs
 
@@ -160,7 +157,6 @@ impl RustTypeContribution {
 ```
 
 **For C:**
-
 ```rust
 // In wit-bindgen-c/src/visitor/contribution.rs
 
@@ -178,7 +174,6 @@ impl CTypeContribution {
 ```
 
 **For C#:**
-
 ```rust
 // In wit-bindgen-csharp/src/visitor/contribution.rs
 
@@ -290,18 +285,18 @@ let generator = opts.build(); // Returns Box<dyn WorldGenerator>
 
 ### Key Fields in Opts
 
-| Field                          | Type                        | Purpose                                                | Example                        |
-| ------------------------------ | --------------------------- | ------------------------------------------------------ | ------------------------------ |
-| `format`                       | `bool`                      | Use `prettyplease` to format generated code            | `true`                         |
-| `std_feature`                  | `bool`                      | Gate std-dependent code with `#[cfg(feature = "std")]` | `true`                         |
-| `ownership`                    | `Ownership`                 | Control whether types are owning or borrowing          | `Owning` / `Borrowing`         |
-| `additional_derive_attributes` | `Vec<String>`               | Add derives to all generated types                     | `["Hash", "serde::Serialize"]` |
-| `additional_derive_ignore`     | `Vec<String>`               | Exclude specific types from extra derives              | `["problematic-type"]`         |
-| `with`                         | `Vec<(String, WithOption)>` | Map WIT interfaces/types to Rust paths                 | See examples                   |
-| `runtime_path`                 | `Option<String>`            | Custom path to wit_bindgen runtime                     | `"my_crate::runtime"`          |
-| `skip`                         | `Vec<String>`               | Functions to skip generating                           | `["debug-only-fn"]`            |
-| `stubs`                        | `bool`                      | Generate stub implementations for exports              | `true`                         |
-| `async_`                       | `AsyncFilterSet`            | Configure async support                                | Complex filtering              |
+| Field | Type | Purpose | Example |
+|-------|------|---------|---------|
+| `format` | `bool` | Use `prettyplease` to format generated code | `true` |
+| `std_feature` | `bool` | Gate std-dependent code with `#[cfg(feature = "std")]` | `true` |
+| `ownership` | `Ownership` | Control whether types are owning or borrowing | `Owning` / `Borrowing` |
+| `additional_derive_attributes` | `Vec<String>` | Add derives to all generated types | `["Hash", "serde::Serialize"]` |
+| `additional_derive_ignore` | `Vec<String>` | Exclude specific types from extra derives | `["problematic-type"]` |
+| `with` | `Vec<(String, WithOption)>` | Map WIT interfaces/types to Rust paths | See examples |
+| `runtime_path` | `Option<String>` | Custom path to wit_bindgen runtime | `"my_crate::runtime"` |
+| `skip` | `Vec<String>` | Functions to skip generating | `["debug-only-fn"]` |
+| `stubs` | `bool` | Generate stub implementations for exports | `true` |
+| `async_` | `AsyncFilterSet` | Configure async support | Complex filtering |
 
 ### The Flow: Opts → RustWasm → Code Generation
 
@@ -387,10 +382,9 @@ use wit_parser::*;
 /// All methods have default implementations that do nothing, so implementations
 /// only need to override the hooks they care about.
 ///
-/// The visitor follows a three-phase lifecycle for each element:
-/// - `before_*` - Called before generation (can skip default generation)
-/// - `augment_*` - Called during generation (add language-specific contributions)
-/// - `after_*` - Called after generation (inject additional code)
+/// Each `visit_*` method is called during code generation for that element,
+/// allowing the visitor to add language-specific contributions (attributes,
+/// derives, additional code, etc.) via the contribution object.
 pub trait Visitor {
     /// Language-specific contribution type for types (records, variants, enums, etc.)
     type TypeContribution;
@@ -409,99 +403,50 @@ pub trait Visitor {
 
     // ==================== Type Definition Hooks ====================
 
-    /// Called before generating a record (struct/class) type.
-    fn before_record(&mut self, record: &Record, type_id: TypeId) -> VisitAction {
-        VisitAction::Continue
-    }
+    /// Called when generating a record (struct/class) type.
+    fn visit_record(&mut self, _record: &Record, _type_id: TypeId, _contrib: &mut Self::TypeContribution) {}
 
-    /// Called while generating a record to add language-specific contributions.
-    fn augment_record(&mut self, record: &Record, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
+    /// Called when generating a variant (tagged union) type.
+    fn visit_variant(&mut self, _variant: &Variant, _type_id: TypeId, _contrib: &mut Self::TypeContribution) {}
 
-    /// Called after a record has been generated.
-    fn after_record(&mut self, record: &Record, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
+    /// Called when generating a simple enum type.
+    fn visit_enum(&mut self, _enum: &Enum, _type_id: TypeId, _contrib: &mut Self::TypeContribution) {}
 
-    /// Called before generating a variant (tagged union) type.
-    fn before_variant(&mut self, variant: &Variant, type_id: TypeId) -> VisitAction {
-        VisitAction::Continue
-    }
+    /// Called when generating a flags (bitflags/bitset) type.
+    fn visit_flags(&mut self, _flags: &Flags, _type_id: TypeId, _contrib: &mut Self::TypeContribution) {}
 
-    fn augment_variant(&mut self, variant: &Variant, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
-
-    fn after_variant(&mut self, variant: &Variant, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
-
-    /// Called before generating a simple enum type.
-    fn before_enum(&mut self, enum_: &Enum, type_id: TypeId) -> VisitAction {
-        VisitAction::Continue
-    }
-
-    fn augment_enum(&mut self, enum_: &Enum, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
-
-    fn after_enum(&mut self, enum_: &Enum, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
-
-    /// Called before generating a flags (bitflags/bitset) type.
-    fn before_flags(&mut self, flags: &Flags, type_id: TypeId) -> VisitAction {
-        VisitAction::Continue
-    }
-
-    fn augment_flags(&mut self, flags: &Flags, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
-
-    fn after_flags(&mut self, flags: &Flags, type_id: TypeId, contrib: &mut Self::TypeContribution) {}
-
-    /// Called before generating a resource type.
-    fn before_resource(&mut self, resource_id: TypeId) -> VisitAction {
-        VisitAction::Continue
-    }
-
-    fn augment_resource(&mut self, resource_id: TypeId, contrib: &mut Self::TypeContribution) {}
-
-    fn after_resource(&mut self, resource_id: TypeId, contrib: &mut Self::TypeContribution) {}
+    /// Called when generating a resource type.
+    fn visit_resource(&mut self, _resource_id: TypeId, _contrib: &mut Self::TypeContribution) {}
 
     // ==================== Field/Variant Member Hooks ====================
 
     /// Called for each field in a record.
-    fn augment_field(&mut self, field: &Field, field_index: usize, contrib: &mut Self::FieldContribution) {}
+    fn visit_field(&mut self, _field: &Field, _field_index: usize, _contrib: &mut Self::FieldContribution) {}
 
     /// Called for each case in a variant or enum.
-    fn augment_variant_case(&mut self, case: &Case, case_index: usize, contrib: &mut Self::VariantCaseContribution) {}
+    fn visit_variant_case(&mut self, _case: &Case, _case_index: usize, _contrib: &mut Self::VariantCaseContribution) {}
 
     // ==================== Function Hooks ====================
 
-    /// Called before generating any function.
-    fn before_function(&mut self, func: &Function) -> VisitAction {
-        VisitAction::Continue
-    }
-
-    /// Called while generating a function.
-    fn augment_function(&mut self, func: &Function, contrib: &mut Self::FunctionContribution) {}
-
-    /// Called after generating a function.
-    fn after_function(&mut self, func: &Function, contrib: &mut Self::FunctionContribution) {}
+    /// Called when generating a function.
+    fn visit_function(&mut self, _func: &Function, _contrib: &mut Self::FunctionContribution) {}
 
     // ==================== Module/Interface Hooks ====================
 
-    /// Called after generating an interface module.
-    fn after_interface(&mut self, interface: Option<&Interface>, contrib: &mut Self::ModuleContribution) {}
+    /// Called when generating an interface module.
+    fn visit_interface(&mut self, _interface: Option<&Interface>, _contrib: &mut Self::ModuleContribution) {}
 
-    /// Called after generating the world.
-    fn after_world(&mut self, world: &World, contrib: &mut Self::ModuleContribution) {}
-}
-
-/// Action returned from `before_*` hooks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VisitAction {
-    /// Continue with default generation.
-    Continue,
-    /// Skip default generation (visitor will provide everything).
-    Skip,
+    /// Called when generating the world.
+    fn visit_world(&mut self, _world: &World, _contrib: &mut Self::ModuleContribution) {}
 }
 ```
 
-**Key differences from language-specific implementations:**
-
-- Uses WIT types directly (`Record`, `Variant`, `Function`) instead of language-specific context types
+**Key characteristics:**
+- Uses WIT types directly (`Record`, `Variant`, `Function`) - works with any language
 - Associated types allow each language to define its own contributions
 - No language-specific concepts (no "derive", "attribute", etc.)
-- Simpler API focused on the essential hooks
+- All methods have default empty implementations
+- Simple, focused API with one hook per element type
 
 ## Rust Implementation
 
@@ -1007,7 +952,7 @@ impl Visitor for CSerializationVisitor {
     type FunctionContribution = CFunctionContribution;
     type ModuleContribution = CModuleContribution;
 
-    fn augment_record(&mut self, record: &Record, _type_id: TypeId, contrib: &mut CTypeContribution) {
+    fn visit_record(&mut self, _record: &Record, _type_id: TypeId, contrib: &mut CTypeContribution) {
         // Add packed attribute for binary compatibility
         contrib.add_attribute("__attribute__((packed))");
 
@@ -1015,7 +960,7 @@ impl Visitor for CSerializationVisitor {
         contrib.add_pragma("pack(push, 1)");
     }
 
-    fn augment_function(&mut self, func: &Function, contrib: &mut CFunctionContribution) {
+    fn visit_function(&mut self, _func: &Function, contrib: &mut CFunctionContribution) {
         // Use cdecl calling convention for all functions
         contrib.calling_convention = Some("__cdecl".to_string());
     }
@@ -1023,7 +968,6 @@ impl Visitor for CSerializationVisitor {
 ```
 
 **Usage in C:**
-
 ```c
 // Generated code with visitor contributions
 
@@ -1075,7 +1019,7 @@ impl Visitor for CppModernVisitor {
     type FunctionContribution = CppFunctionContribution;
     type ModuleContribution = CppModuleContribution;
 
-    fn augment_record(&mut self, record: &Record, _type_id: TypeId, contrib: &mut CppTypeContribution) {
+    fn visit_record(&mut self, _record: &Record, _type_id: TypeId, contrib: &mut CppTypeContribution) {
         // Make all types default-constructible and movable
         contrib.add_attribute("[[nodiscard]]");
 
@@ -1083,7 +1027,7 @@ impl Visitor for CppModernVisitor {
         contrib.add_base_class("public std::move_only_wrapper");
     }
 
-    fn augment_function(&mut self, func: &Function, contrib: &mut CppFunctionContribution) {
+    fn visit_function(&mut self, func: &Function, contrib: &mut CppFunctionContribution) {
         // Mark all functions as [[nodiscard]] if they return a value
         if !func.results.is_empty() {
             contrib.add_attribute("[[nodiscard]]");
@@ -1098,7 +1042,6 @@ impl Visitor for CppModernVisitor {
 ```
 
 **Usage in C++:**
-
 ```cpp
 // Generated code with visitor contributions
 
@@ -1150,7 +1093,7 @@ impl Visitor for CSharpSerializationVisitor {
     type FunctionContribution = CSharpFunctionContribution;
     type ModuleContribution = CSharpModuleContribution;
 
-    fn augment_record(&mut self, record: &Record, _type_id: TypeId, contrib: &mut CSharpTypeContribution) {
+    fn visit_record(&mut self, _record: &Record, _type_id: TypeId, contrib: &mut CSharpTypeContribution) {
         // Add JSON serialization attributes
         contrib.add_attribute("[System.Text.Json.Serialization.JsonSerializable]");
 
@@ -1161,7 +1104,7 @@ impl Visitor for CSharpSerializationVisitor {
         contrib.set_modifier("record");
     }
 
-    fn augment_function(&mut self, func: &Function, contrib: &mut CSharpFunctionContribution) {
+    fn visit_function(&mut self, func: &Function, contrib: &mut CSharpFunctionContribution) {
         // Add async support
         if is_async_function(func) {
             contrib.set_async(true);
@@ -1171,7 +1114,6 @@ impl Visitor for CSharpSerializationVisitor {
 ```
 
 **Usage in C#:**
-
 ```csharp
 // Generated code with visitor contributions
 
@@ -1187,12 +1129,12 @@ public async Task<int> MyFunctionAsync(MyRecord record);
 
 ### Cross-Language Summary
 
-| Backend  | Contribution Types                            | Common Use Cases                        |
-| -------- | --------------------------------------------- | --------------------------------------- |
-| **Rust** | Derives, attributes, code injection           | serde, Debug, validation traits         |
-| **C**    | Attributes (`__attribute__`), pragmas         | Packing, alignment, calling conventions |
-| **C++**  | Attributes (`[[...]]`), concepts, inheritance | Modern C++ features, RAII, noexcept     |
-| **C#**   | Attributes (`[...]`), interfaces, modifiers   | Serialization, async, nullable          |
+| Backend | Contribution Types | Common Use Cases |
+|---------|-------------------|------------------|
+| **Rust** | Derives, attributes, code injection | serde, Debug, validation traits |
+| **C** | Attributes (`__attribute__`), pragmas | Packing, alignment, calling conventions |
+| **C++** | Attributes (`[[...]]`), concepts, inheritance | Modern C++ features, RAII, noexcept |
+| **C#** | Attributes (`[...]`), interfaces, modifiers | Serialization, async, nullable |
 
 Each backend provides idiomatic contribution APIs while sharing the core visitor pattern infrastructure.
 
@@ -1206,7 +1148,6 @@ When no visitor is provided or a visitor doesn't override a method:
 4. **Backward compatible**: Existing code continues to work without modification
 
 This is enforced by:
-
 - All trait methods having default `{}` or `BeforeAction::Continue` implementations
 - Visitor stored as `Option<Box<dyn WitVisitor>>` in `Opts`
 - Visitor only called when `Some(...)`
@@ -1227,14 +1168,12 @@ The visitor functionality is **feature-gated** behind the `visitor` feature flag
 Users who want to use visitors must enable the feature:
 
 **In `Cargo.toml`:**
-
 ```toml
 [dependencies]
 wit-bindgen = { version = "0.47", features = ["visitor"] }
 ```
 
 **Or when using the macro:**
-
 ```rust
 // This will only work if the "visitor" feature is enabled
 wit_bindgen::generate!({
@@ -1312,7 +1251,6 @@ impl InterfaceGenerator<'_> {
 ```
 
 This pattern has several advantages:
-
 - The `#[cfg]` attributes are isolated to helper methods
 - Main generation code is clean and readable
 - Both feature states have explicit implementations
@@ -1371,7 +1309,6 @@ fn print_typedef_record(&mut self, id: TypeId, record: &Record, docs: &Docs) {
 The implementation must be tested with both feature configurations:
 
 **In CI/CD:**
-
 ```bash
 # Test without visitor feature (default)
 cargo test
@@ -1384,7 +1321,6 @@ cargo test --all-features
 ```
 
 **In local development:**
-
 ```bash
 # Check that code compiles without visitor
 cargo check --no-default-features
@@ -1591,7 +1527,6 @@ fn print_typedef_record(&mut self, id: TypeId, record: &Record, docs: &Docs) {
 ```
 
 **Similar changes needed for:**
-
 - `print_typedef_variant` (line ~2032)
 - `print_typedef_enum` (line ~2199)
 - `type_flags` (line ~2790)
@@ -1675,13 +1610,11 @@ fn generate_guest_import(&mut self, func: &Function) {
 ```
 
 **Similar changes needed for:**
-
 - `generate_guest_export` (line ~1035)
 
 ### 5. Add Module/World Hooks (lib.rs and interface.rs)
 
 Add hooks in appropriate locations:
-
 - Before/after interface generation in `RustWasm::import_interface` and `RustWasm::export_interface`
 - Before/after world generation in `RustWasm::finish`
 
@@ -1698,25 +1631,32 @@ wit-bindgen = { version = "0.47", features = ["visitor"] }
 ### Example 1: Add Serde Derives to All Types
 
 ```rust
-use wit_bindgen_rust::visitor::{WitVisitor, RecordContext, VariantContext, EnumContext};
-use wit_bindgen_rust::visitor::{TypeContribution};
+use wit_bindgen_core::Visitor;
+use wit_bindgen_rust::{RustTypeContribution};
+use wit_parser::*;
 
 struct SerdeVisitor;
 
-impl WitVisitor for SerdeVisitor {
-    fn augment_record(&mut self, _ctx: &RecordContext, contrib: &mut TypeContribution) {
+impl Visitor for SerdeVisitor {
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+
+    fn visit_record(&mut self, _record: &Record, _type_id: TypeId, contrib: &mut RustTypeContribution) {
         contrib.add_derive("serde::Serialize");
         contrib.add_derive("serde::Deserialize");
         contrib.add_attribute("#[serde(rename_all = \"camelCase\")]");
     }
 
-    fn augment_variant(&mut self, _ctx: &VariantContext, contrib: &mut TypeContribution) {
+    fn visit_variant(&mut self, _variant: &Variant, _type_id: TypeId, contrib: &mut RustTypeContribution) {
         contrib.add_derive("serde::Serialize");
         contrib.add_derive("serde::Deserialize");
         contrib.add_attribute("#[serde(tag = \"type\", content = \"value\")]");
     }
 
-    fn augment_enum(&mut self, _ctx: &EnumContext, contrib: &mut TypeContribution) {
+    fn visit_enum(&mut self, _enum: &Enum, _type_id: TypeId, contrib: &mut RustTypeContribution) {
         contrib.add_derive("serde::Serialize");
         contrib.add_derive("serde::Deserialize");
     }
@@ -1960,12 +1900,10 @@ This visitor trait system provides:
 ✅ **Shared infrastructure** - Core pattern in wit-bindgen-core, implemented once per backend
 
 The design uses a **two-layer architecture**:
-
 - **Core layer** (`wit-bindgen-core`): Generic `Visitor` trait with associated types
 - **Language layer** (per-backend): Language-specific contribution types and implementations
 
 This integrates naturally with wit-bindgen's existing architecture by:
-
 - Leveraging configuration systems (like Rust's `Opts`) per-backend
 - Hooking into strategic points during code generation
 - Using associated types for type-safe, language-specific contributions
