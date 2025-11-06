@@ -1,8 +1,11 @@
-use std::collections::HashMap;
-
-// Contribution Types (for core::Visitor trait - passed by mutable reference)
+//! Contribution types for WIT visitor pattern
+//!
+//! These types are used with the core::Visitor trait to customize
+//! generated Rust code. They are passed as mutable references to
+//! visitor methods.
 
 /// Contributions for type definitions (records, variants, enums, flags, resources).
+///
 /// This type is passed as a mutable reference to visitor methods.
 #[derive(Default, Debug, Clone)]
 pub struct TypeContribution {
@@ -142,116 +145,6 @@ impl ModuleContribution {
     }
 }
 
-// AnnotationResult (aggregate result for annotation processing)
-
-/// Complete result from processing annotations on a WIT element.
-/// This aggregates all contributions from processing annotations
-/// and can be used to build the final contribution objects.
-#[derive(Default, Debug, Clone)]
-pub struct AnnotationResult {
-    /// Type-level contributions
-    pub type_contrib: TypeContribution,
-
-    /// Field-specific contributions, indexed by field name
-    pub field_contribs: HashMap<String, FieldContribution>,
-
-    /// Case-specific contributions, indexed by case name
-    pub case_contribs: HashMap<String, VariantCaseContribution>,
-
-    /// Function-level contributions
-    pub function_contrib: FunctionContribution,
-
-    /// Module-level contributions
-    pub module_contrib: ModuleContribution,
-
-    /// Action to take (Continue with generation or Skip it)
-    pub action: VisitAction,
-}
-
-impl AnnotationResult {
-    /// Create a new empty result
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Create a result that continues with generation
-    pub fn continue_with() -> Self {
-        Self {
-            action: VisitAction::Continue,
-            ..Default::default()
-        }
-    }
-
-    /// Create a result that skips generation
-    pub fn skip() -> Self {
-        Self {
-            action: VisitAction::Skip,
-            ..Default::default()
-        }
-    }
-
-    /// Add a derive to the type contribution
-    pub fn add_derive(&mut self, derive: impl Into<String>) {
-        self.type_contrib.add_derive(derive);
-    }
-
-    /// Add an attribute to the type contribution
-    pub fn add_attribute(&mut self, attr: impl Into<String>) {
-        self.type_contrib.add_attribute(attr);
-    }
-
-    /// Add an attribute for a specific field
-    pub fn add_field_attribute(&mut self, field_name: impl Into<String>, attr: impl Into<String>) {
-        self.field_contribs
-            .entry(field_name.into())
-            .or_insert_with(FieldContribution::new)
-            .add_attribute(attr);
-    }
-
-    /// Add an attribute for a specific case
-    pub fn add_case_attribute(&mut self, case_name: impl Into<String>, attr: impl Into<String>) {
-        self.case_contribs
-            .entry(case_name.into())
-            .or_insert_with(VariantCaseContribution::new)
-            .add_attribute(attr);
-    }
-
-    /// Add code to prepend to function body
-    pub fn add_body_prefix(&mut self, code: impl Into<String>) {
-        self.function_contrib.add_body_prefix(code);
-    }
-
-    /// Add a function attribute
-    pub fn add_function_attribute(&mut self, attr: impl Into<String>) {
-        self.function_contrib.add_attribute(attr);
-    }
-
-    /// Check if this result has any modifications
-    pub fn is_empty(&self) -> bool {
-        self.type_contrib.is_empty()
-            && self.field_contribs.is_empty()
-            && self.case_contribs.is_empty()
-            && self.function_contrib.is_empty()
-            && self.module_contrib.is_empty()
-    }
-}
-
-/// Action to take after processing annotations
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum VisitAction {
-    /// Continue with default generation, applying modifications
-    Continue,
-
-    /// Skip default generation (visitor provides everything)
-    Skip,
-}
-
-impl Default for VisitAction {
-    fn default() -> Self {
-        VisitAction::Continue
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -280,26 +173,12 @@ mod tests {
     }
 
     #[test]
-    fn test_annotation_result() {
-        let mut result = AnnotationResult::new();
-        assert!(result.is_empty());
-        assert_eq!(result.action, VisitAction::Continue);
+    fn test_variant_case_contribution() {
+        let mut contrib = VariantCaseContribution::new();
+        assert!(contrib.is_empty());
 
-        result.add_derive("Clone");
-        result.add_field_attribute("username", "#[serde(rename = \"user\")]");
-        assert!(!result.is_empty());
-
-        assert_eq!(result.type_contrib.derives.len(), 1);
-        assert_eq!(result.field_contribs.get("username").unwrap().attributes.len(), 1);
-    }
-
-    #[test]
-    fn test_visit_action() {
-        let cont = AnnotationResult::continue_with();
-        assert_eq!(cont.action, VisitAction::Continue);
-
-        let skip = AnnotationResult::skip();
-        assert_eq!(skip.action, VisitAction::Skip);
+        contrib.add_attribute("#[serde(rename = \"bar\")]");
+        assert!(!contrib.is_empty());
     }
 
     #[test]
@@ -313,5 +192,15 @@ mod tests {
 
         assert_eq!(contrib.attributes.len(), 1);
         assert_eq!(contrib.body_prefix.len(), 1);
+    }
+
+    #[test]
+    fn test_module_contribution() {
+        let mut contrib = ModuleContribution::new();
+        assert!(contrib.is_empty());
+
+        contrib.add_use("use std::collections::HashMap;");
+        contrib.add_code("pub const VERSION: u32 = 1;");
+        assert!(!contrib.is_empty());
     }
 }

@@ -1,22 +1,21 @@
-//! WIT Visitor Return Types
+//! WIT Visitor Contribution Types
 //!
-//! This module provides return types for the WIT visitor pattern.
-//! The visitor processes WIT annotations and returns what modifications
-//! should be applied to generated Rust code.
+//! This module provides contribution types for the WIT visitor pattern.
+//! These types are used as associated types in the `core::Visitor` trait
+//! and are passed as mutable references to visitor methods.
 //!
 //! # Overview
 //!
-//! The visitor pattern processes WIT annotations (from #derive, #serde, #repr, etc.)
-//! and returns an `AnnotationResult` that describes what to add to generated code:
-//! - Derive macros
-//! - Attributes
-//! - Field-specific attributes
-//! - Function body code
+//! The visitor pattern allows customization of generated Rust code by modifying
+//! contribution objects in-place during code generation.
 //!
-//! # Return Types
+//! # Contribution Types
 //!
-//! - [`AnnotationResult`] - Complete result from processing annotations
-//! - [`VisitAction`] - Whether to continue or skip default generation
+//! - [`TypeContribution`] - For records, variants, enums, flags, resources
+//! - [`FieldContribution`] - For fields within records
+//! - [`VariantCaseContribution`] - For enum/variant cases
+//! - [`FunctionContribution`] - For functions
+//! - [`ModuleContribution`] - For modules/interfaces
 //!
 //! # Usage Example
 //!
@@ -77,6 +76,6 @@
 mod return_types;
 
 pub use return_types::{
-    AnnotationResult, FieldContribution, FunctionContribution, ModuleContribution,
-    TypeContribution, VariantCaseContribution, VisitAction,
+    FieldContribution, FunctionContribution, ModuleContribution, TypeContribution,
+    VariantCaseContribution,
 };
