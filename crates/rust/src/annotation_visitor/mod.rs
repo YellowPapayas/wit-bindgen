@@ -76,4 +76,7 @@
 
 mod return_types;
 
-pub use return_types::{AnnotationResult, VisitAction};
+pub use return_types::{
+    AnnotationResult, FieldContribution, FunctionContribution, ModuleContribution,
+    TypeContribution, VariantCaseContribution, VisitAction,
+};
