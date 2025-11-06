@@ -12,7 +12,7 @@
 * Needs more testing on big-endian.
 
 * Features from wiggle:
-  * use `GuestError::InFunc` more liberally
+  * use `GuestError::InFunc` more 
     - stores/loads
     - `try_from` conversions
   * generate just the trait (??? what to do about `wasmtime` dep ???)

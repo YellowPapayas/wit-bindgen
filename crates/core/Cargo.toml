@@ -23,5 +23,7 @@ serde = { workspace = true, optional = true }
 clap = { workspace = true, optional = true }
 
 [features]
+default = ["visitor"]
 serde = ['dep:serde']
 clap = ['dep:clap']
+visitor = []
