@@ -196,6 +196,33 @@ impl<'i> InterfaceGenerator<'i> {
         None
     }
 
+    #[cfg(feature = "visitor")]
+    fn call_visit_enum(&mut self, enum_: &Enum, type_id: TypeId) -> Option<TypeContribution> {
+        self.r#gen
+            .visitor
+            .as_deref_mut()
+            .and_then(|v| v.visit_enum(enum_, type_id))
+    }
+
+    #[cfg(not(feature = "visitor"))]
+    fn call_visit_enum(&mut self, _enum: &Enum, _type_id: TypeId) -> Option<()> {
+        None
+    }
+
+    // helper method to call visit_variant_case with a Case (used for enum cases)
+    #[cfg(feature = "visitor")]
+    fn call_visit_enum_case(&mut self, case: &Case, index: usize) -> Option<VariantCaseContribution> {
+        self.r#gen
+            .visitor
+            .as_deref_mut()
+            .and_then(|v| v.visit_variant_case(case, index))
+    }
+
+    #[cfg(not(feature = "visitor"))]
+    fn call_visit_enum_case(&mut self, _case: &Case, _index: usize) -> Option<()> {
+        None
+    }
+
     pub(super) fn generate_exports<'a>(
         &mut self,
         interface: Option<(InterfaceId, &WorldKey)>,
@@ -2357,14 +2384,28 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
     {
         let info = self.info(id);
 
+        // call visit hook for enum type-level contributions
+        let visitor_contribution = self.call_visit_enum(enum_, id);
+
         let name = to_upper_camel_case(name);
         self.rustdoc(docs);
         for attr in attrs {
             self.push_str(&format!("{}\n", attr));
         }
+
+        // apply existing attributes parameter (used by caller)
+        #[cfg(feature = "visitor")]
+        if let Some(ref contrib) = visitor_contribution {
+            for attr in &contrib.attributes {
+                self.push_str(attr);
+                self.push_str("\n");
+            }
+        }
+
         self.push_str("#[repr(");
         self.int_repr(enum_.tag());
         self.push_str(")]\n");
+
         // We use a BTree set to make sure we don't have any duplicates and a stable order
         let mut derives: BTreeSet<String> = BTreeSet::new();
         if !self
@@ -2375,6 +2416,15 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         {
             derives.extend(self.r#gen.opts.additional_derive_attributes.to_vec());
         }
+
+        // add visitor-contributed derives
+        #[cfg(feature = "visitor")]
+        if let Some(ref contrib) = visitor_contribution {
+            for derive in &contrib.derives {
+                derives.insert(derive.clone());
+            }
+        }
+
         derives.extend(
             ["Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord"]
                 .into_iter()
@@ -2384,12 +2434,45 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
         self.push_str(")]\n");
         self.push_str(&format!("pub enum {name} {{\n"));
-        for case in enum_.cases.iter() {
+
+        // enumerate cases for visitor
+        for (case_idx, case) in enum_.cases.iter().enumerate() {
+            // call visitor for enum case (creating a temp Case with ty=None for enum cases)
+            let case_contrib = {
+                #[cfg(feature = "visitor")]
+                {
+                    let temp_case = Case {
+                        name: case.name.clone(),
+                        docs: case.docs.clone(),
+                        ty: None,
+                    };
+                    self.call_visit_enum_case(&temp_case, case_idx)
+                }
+                #[cfg(not(feature = "visitor"))]
+                {
+                    None
+                }
+            };
+
             self.rustdoc(&case.docs);
+
+            // apply existing case_attr callback
             self.push_str(&case_attr(case));
+
+            // apply visitor case-level attributes
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = case_contrib {
+                for attr in &contrib.attributes {
+                    self.push_str("    ");
+                    self.push_str(attr);
+                    self.push_str("\n");
+                }
+            }
+
             self.push_str(&case.name.to_upper_camel_case());
             self.push_str(",\n");
         }
+
         self.push_str("}\n");
 
         // Auto-synthesize an implementation of the standard `Error` trait for
