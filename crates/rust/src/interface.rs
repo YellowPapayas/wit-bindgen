@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(feature = "visitor")]
-use crate::annotation_visitor::{FieldContribution, TypeContribution};
+use crate::annotation_visitor::{FieldContribution, TypeContribution, VariantCaseContribution};
 use anyhow::Result;
 use heck::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -166,6 +166,33 @@ impl<'i> InterfaceGenerator<'i> {
 
     #[cfg(not(feature = "visitor"))]
     fn call_visit_field(&mut self, _field: &Field, _index: usize) -> Option<()> {
+        None
+    }
+
+    #[cfg(feature = "visitor")]
+    fn call_visit_variant(&mut self, variant: &Variant, type_id: TypeId) -> Option<TypeContribution> {
+        self.r#gen
+            .visitor
+            .as_deref_mut()
+            .and_then(|v| v.visit_variant(variant, type_id))
+    }
+
+    #[cfg(not(feature = "visitor"))]
+    fn call_visit_variant(&mut self, _variant: &Variant, _type_id: TypeId) -> Option<()> {
+        None
+    }
+
+    // helper to call visit_variant_case on the visitor if present
+    #[cfg(feature = "visitor")]
+    fn call_visit_variant_case(&mut self, case: &Case, index: usize) -> Option<VariantCaseContribution> {
+        self.r#gen
+            .visitor
+            .as_deref_mut()
+            .and_then(|v| v.visit_variant_case(case, index))
+    }
+
+    #[cfg(not(feature = "visitor"))]
+    fn call_visit_variant_case(&mut self, _case: &Case, _index: usize) -> Option<()> {
         None
     }
 
@@ -2107,14 +2134,11 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 .iter()
                 .map(|c| (c.name.to_upper_camel_case(), &c.docs, c.ty.as_ref())),
             docs,
+            Some(variant),
         );
     }
 
-    fn print_rust_enum<'b>(
-        &mut self,
-        id: TypeId,
-        cases: impl IntoIterator<Item = (String, &'b Docs, Option<&'b Type>)> + Clone,
-        docs: &Docs,
+    fn print_rust_enum<'b>(&mut self, id: TypeId, cases: impl IntoIterator<Item =(String, &'b Docs, Option<&'b Type>)> + Clone, docs: &Docs, variant: Option<&Variant>
     ) where
         Self: Sized,
     {
@@ -2128,6 +2152,12 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
         for (name, mode) in self.modes_of(id) {
+            let visitor_contribution = if let Some(variant) = variant {
+                self.call_visit_variant(variant, id)
+            } else {
+                None
+            };
+
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
             if !self
@@ -2138,19 +2168,70 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             {
                 derives.extend(additional_derives.clone());
             }
+
+            // visitor-contributed derives
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for derive in &contrib.derives {
+                    derives.insert(derive.clone());
+                }
+            }
+
             if info.is_copy() {
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
             } else if info.is_clone() {
                 derives.insert("Clone".to_string());
             }
+
+            // apply visitor-contibuted attributes before derives
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for attr in &contrib.attributes {
+                    self.push_str(attr);
+                    self.push_str("\n");
+                }
+            }
+
             if !derives.is_empty() {
                 self.push_str("#[derive(");
                 self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
-                self.push_str(")]\n")
+                self.push_str(")]\n");
             }
+            
             self.push_str(&format!("pub enum {name}"));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
+
+            for (case_idx, (case_name, case_docs, payload)) in cases.clone().into_iter().enumerate() {
+                // Call visitor hook for case-level contributions
+                let case_contrib = if let Some(v) = variant {
+                    self.call_visit_variant_case(&v.cases[case_idx], case_idx)
+                } else {
+                    None
+                };
+
+                self.rustdoc(case_docs);
+
+                // Apply variant-case-level attributes
+                #[cfg(feature = "visitor")]
+                if let Some(ref contrib) = case_contrib {
+                    for attr in &contrib.attributes {
+                        self.push_str("    ");
+                        self.push_str(attr);
+                        self.push_str("\n");
+                    }
+                }
+
+                self.push_str(&case_name);
+                if let Some(ty) = payload {
+                    self.push_str("(");
+                    let mode = self.filter_mode(ty, mode);
+                    self.print_ty(ty, mode);
+                    self.push_str(")")
+                }
+                self.push_str(",\n");
+            }
+
             for (case_name, docs, payload) in cases.clone() {
                 self.rustdoc(docs);
                 self.push_str(&case_name);
