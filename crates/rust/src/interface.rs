@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(feature = "visitor")]
-use crate::annotation_visitor::{FieldContribution, TypeContribution, VariantCaseContribution};
+use crate::annotation_visitor::{RustFieldContribution, RustTypeContribution, RustVariantCaseContribution};
 use anyhow::Result;
 use heck::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -139,7 +139,7 @@ enum PayloadFor {
 impl<'i> InterfaceGenerator<'i> {
     /// Helper to call visit_record on the visitor if present
     #[cfg(feature = "visitor")]
-    fn call_visit_record(&mut self, record: &Record, type_id: TypeId) -> Option<TypeContribution> {
+    fn call_visit_record(&mut self, record: &Record, type_id: TypeId) -> Option<RustTypeContribution> {
         self.r#gen
             .visitor
             .as_deref_mut()
@@ -151,13 +151,13 @@ impl<'i> InterfaceGenerator<'i> {
         &mut self,
         _record: &Record,
         _type_id: TypeId,
-    ) -> Option<TypeContribution> {
+    ) -> Option<RustTypeContribution> {
         None
     }
 
     /// Helper to call visit_field on the visitor if present
     #[cfg(feature = "visitor")]
-    fn call_visit_field(&mut self, field: &Field, index: usize) -> Option<FieldContribution> {
+    fn call_visit_field(&mut self, field: &Field, index: usize) -> Option<RustFieldContribution> {
         self.r#gen
             .visitor
             .as_deref_mut()
@@ -165,12 +165,12 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_field(&mut self, _field: &Field, _index: usize) -> Option<FieldContribution> {
+    fn call_visit_field(&mut self, _field: &Field, _index: usize) -> Option<RustFieldContribution> {
         None
     }
 
     #[cfg(feature = "visitor")]
-    fn call_visit_variant(&mut self, variant: &Variant, type_id: TypeId) -> Option<TypeContribution> {
+    fn call_visit_variant(&mut self, variant: &Variant, type_id: TypeId) -> Option<RustTypeContribution> {
         self.r#gen
             .visitor
             .as_deref_mut()
@@ -178,13 +178,13 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_variant(&mut self, _variant: &Variant, _type_id: TypeId) -> Option<TypeContribution> {
+    fn call_visit_variant(&mut self, _variant: &Variant, _type_id: TypeId) -> Option<RustTypeContribution> {
         None
     }
 
     // helper to call visit_variant_case on the visitor if present
     #[cfg(feature = "visitor")]
-    fn call_visit_variant_case(&mut self, case: &Case, index: usize) -> Option<VariantCaseContribution> {
+    fn call_visit_variant_case(&mut self, case: &Case, index: usize) -> Option<RustVariantCaseContribution> {
         self.r#gen
             .visitor
             .as_deref_mut()
@@ -192,12 +192,12 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_variant_case(&mut self, _case: &Case, _index: usize) -> Option<VariantCaseContribution> {
+    fn call_visit_variant_case(&mut self, _case: &Case, _index: usize) -> Option<RustVariantCaseContribution> {
         None
     }
 
     #[cfg(feature = "visitor")]
-    fn call_visit_enum(&mut self, enum_: &Enum, type_id: TypeId) -> Option<TypeContribution> {
+    fn call_visit_enum(&mut self, enum_: &Enum, type_id: TypeId) -> Option<RustTypeContribution> {
         self.r#gen
             .visitor
             .as_deref_mut()
@@ -205,13 +205,13 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_enum(&mut self, _enum: &Enum, _type_id: TypeId) -> Option<TypeContribution> {
+    fn call_visit_enum(&mut self, _enum: &Enum, _type_id: TypeId) -> Option<RustTypeContribution> {
         None
     }
 
     // helper method to call visit_variant_case with a Case (used for enum cases)
     #[cfg(feature = "visitor")]
-    fn call_visit_enum_case(&mut self, case: &Case, index: usize) -> Option<VariantCaseContribution> {
+    fn call_visit_enum_case(&mut self, case: &Case, index: usize) -> Option<RustVariantCaseContribution> {
         self.r#gen
             .visitor
             .as_deref_mut()
@@ -219,7 +219,7 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_enum_case(&mut self, _case: &Case, _index: usize) -> Option<VariantCaseContribution> {
+    fn call_visit_enum_case(&mut self, _case: &Case, _index: usize) -> Option<RustVariantCaseContribution> {
         None
     }
 

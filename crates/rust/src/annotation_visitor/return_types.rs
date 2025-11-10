@@ -9,15 +9,15 @@
 /// This type is passed as a mutable reference to visitor methods.
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-pub struct TypeContribution {
+pub struct RustTypeContribution {
     /// Derive macros to add (e.g., "Clone", "Debug", "serde::Serialize")
     pub derives: Vec<String>,
 
-    /// Raw attributes to add (e.g., "#[repr(C)]", "#[serde(...)]")
+    /// Attributes to add (e.g., "#[serde(rename_all = \"camelCase\")]")
     pub attributes: Vec<String>,
 }
 
-impl TypeContribution {
+impl RustTypeContribution {
     pub fn new() -> Self {
         Self::default()
     }
@@ -41,12 +41,12 @@ impl TypeContribution {
 /// Contributions for field definitions within records.
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-pub struct FieldContribution {
+pub struct RustFieldContribution {
     /// Field-level attributes (e.g., "#[serde(rename = \"foo\")]")
     pub attributes: Vec<String>,
 }
 
-impl FieldContribution {
+impl RustFieldContribution {
     pub fn new() -> Self {
         Self::default()
     }
@@ -65,12 +65,12 @@ impl FieldContribution {
 /// Contributions for variant/enum cases.
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-pub struct VariantCaseContribution {
+pub struct RustVariantCaseContribution {
     /// Case-level attributes (e.g., "#[serde(rename = \"foo\")]")
     pub attributes: Vec<String>,
 }
 
-impl VariantCaseContribution {
+impl RustVariantCaseContribution {
     pub fn new() -> Self {
         Self::default()
     }
@@ -89,7 +89,7 @@ impl VariantCaseContribution {
 /// Contributions for function definitions.
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-pub struct FunctionContribution {
+pub struct RustFunctionContribution {
     /// Function-level attributes (e.g., "#[inline]", "#[must_use]")
     pub attributes: Vec<String>,
 
@@ -99,7 +99,7 @@ pub struct FunctionContribution {
     // TODO: Code to append to function body (body_postfix)
 }
 
-impl FunctionContribution {
+impl RustFunctionContribution {
     pub fn new() -> Self {
         Self::default()
     }
@@ -123,7 +123,7 @@ impl FunctionContribution {
 /// Contributions for module-level code.
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-pub struct ModuleContribution {
+pub struct RustModuleContribution {
     /// Use statements to add
     pub use_statements: Vec<String>,
 
@@ -131,7 +131,7 @@ pub struct ModuleContribution {
     pub additional_code: Vec<String>,
 }
 
-impl ModuleContribution {
+impl RustModuleContribution {
     pub fn new() -> Self {
         Self::default()
     }
