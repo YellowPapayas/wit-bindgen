@@ -151,7 +151,7 @@ impl<'i> InterfaceGenerator<'i> {
         &mut self,
         _record: &Record,
         _type_id: TypeId,
-    ) -> Option<()> {
+    ) -> Option<TypeContribution> {
         None
     }
 
@@ -165,7 +165,7 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_field(&mut self, _field: &Field, _index: usize) -> Option<()> {
+    fn call_visit_field(&mut self, _field: &Field, _index: usize) -> Option<FieldContribution> {
         None
     }
 
@@ -178,7 +178,7 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_variant(&mut self, _variant: &Variant, _type_id: TypeId) -> Option<()> {
+    fn call_visit_variant(&mut self, _variant: &Variant, _type_id: TypeId) -> Option<TypeContribution> {
         None
     }
 
@@ -192,7 +192,7 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_variant_case(&mut self, _case: &Case, _index: usize) -> Option<()> {
+    fn call_visit_variant_case(&mut self, _case: &Case, _index: usize) -> Option<VariantCaseContribution> {
         None
     }
 
@@ -205,7 +205,7 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_enum(&mut self, _enum: &Enum, _type_id: TypeId) -> Option<()> {
+    fn call_visit_enum(&mut self, _enum: &Enum, _type_id: TypeId) -> Option<TypeContribution> {
         None
     }
 
@@ -219,7 +219,7 @@ impl<'i> InterfaceGenerator<'i> {
     }
 
     #[cfg(not(feature = "visitor"))]
-    fn call_visit_enum_case(&mut self, _case: &Case, _index: usize) -> Option<()> {
+    fn call_visit_enum_case(&mut self, _case: &Case, _index: usize) -> Option<VariantCaseContribution> {
         None
     }
 
