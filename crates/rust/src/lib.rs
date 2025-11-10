@@ -16,6 +16,12 @@ use wit_bindgen_core::{
 mod bindgen;
 mod interface;
 
+#[cfg(feature = "visitor")]
+pub mod annotation_visitor;
+
+#[cfg(feature = "visitor")]
+pub use annotation_visitor::RustVisitor;
+
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
     /// macro invocation.
@@ -52,6 +58,9 @@ struct RustWasm {
 
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
+
+    #[cfg(feature = "visitor")]
+    visitor: Option<Box<dyn RustVisitor>>,
 }
 
 #[derive(Default)]
@@ -138,7 +147,7 @@ fn parse_with(s: &str) -> Result<(String, WithOption), String> {
     Ok((k.to_string(), v))
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[cfg_attr(
     feature = "serde",
@@ -274,12 +283,82 @@ pub struct Opts {
     #[cfg_attr(feature = "clap", clap(flatten))]
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub async_: AsyncFilterSet,
+
+    #[cfg(feature = "visitor")]
+    #[cfg_attr(feature = "serde", serde(skip))]
+    pub visitor: Option<Box<dyn RustVisitor>>,
+}
+
+// Manual Debug implementation to skip visitor field
+impl std::fmt::Debug for Opts {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Opts")
+            .field("format", &self.format)
+            .field("std_feature", &self.std_feature)
+            .field("raw_strings", &self.raw_strings)
+            .field("skip", &self.skip)
+            .field("stubs", &self.stubs)
+            .field("export_prefix", &self.export_prefix)
+            .field("ownership", &self.ownership)
+            .field("runtime_path", &self.runtime_path)
+            .field("bitflags_path", &self.bitflags_path)
+            .field("additional_derive_attributes", &self.additional_derive_attributes)
+            .field("additional_derive_ignore", &self.additional_derive_ignore)
+            .field("with", &self.with)
+            .field("generate_all", &self.generate_all)
+            .field("type_section_suffix", &self.type_section_suffix)
+            .field("disable_run_ctors_once_workaround", &self.disable_run_ctors_once_workaround)
+            .field("default_bindings_module", &self.default_bindings_module)
+            .field("export_macro_name", &self.export_macro_name)
+            .field("pub_export_macro", &self.pub_export_macro)
+            .field("generate_unused_types", &self.generate_unused_types)
+            .field("disable_custom_section_link_helpers", &self.disable_custom_section_link_helpers)
+            .field("async_", &self.async_)
+            .finish()
+    }
+}
+
+// Manual Clone implementation to skip visitor field
+impl Clone for Opts {
+    fn clone(&self) -> Self {
+        Opts {
+            format: self.format,
+            std_feature: self.std_feature,
+            raw_strings: self.raw_strings,
+            skip: self.skip.clone(),
+            stubs: self.stubs,
+            export_prefix: self.export_prefix.clone(),
+            ownership: self.ownership,
+            runtime_path: self.runtime_path.clone(),
+            bitflags_path: self.bitflags_path.clone(),
+            additional_derive_attributes: self.additional_derive_attributes.clone(),
+            additional_derive_ignore: self.additional_derive_ignore.clone(),
+            with: self.with.clone(),
+            generate_all: self.generate_all,
+            type_section_suffix: self.type_section_suffix.clone(),
+            disable_run_ctors_once_workaround: self.disable_run_ctors_once_workaround,
+            default_bindings_module: self.default_bindings_module.clone(),
+            export_macro_name: self.export_macro_name.clone(),
+            pub_export_macro: self.pub_export_macro,
+            generate_unused_types: self.generate_unused_types,
+            disable_custom_section_link_helpers: self.disable_custom_section_link_helpers,
+            async_: self.async_.clone(),
+            #[cfg(feature = "visitor")]
+            visitor: None, // Can't clone trait objects, visitor is not cloned
+        }
+    }
 }
 
 impl Opts {
-    pub fn build(self) -> Box<dyn WorldGenerator> {
+    pub fn build(#[cfg_attr(not(feature = "visitor"), allow(unused_mut))] mut self) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
+
+        #[cfg(feature = "visitor")]
+        {
+            r.visitor = self.visitor.take();
+        }
+
         r.opts = self;
         Box::new(r)
     }

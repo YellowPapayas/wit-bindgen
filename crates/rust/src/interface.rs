@@ -4,6 +4,9 @@ use crate::{
     to_upper_camel_case, wasm_type, ConstructorReturnType, FnSig, Identifier, InterfaceName,
     Ownership, RuntimeItem, RustFlagsRepr, RustWasm, TypeGeneration,
 };
+
+#[cfg(feature = "visitor")]
+use crate::annotation_visitor::{FieldContribution, TypeContribution};
 use anyhow::Result;
 use heck::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -134,6 +137,38 @@ enum PayloadFor {
 }
 
 impl<'i> InterfaceGenerator<'i> {
+    /// Helper to call visit_record on the visitor if present
+    #[cfg(feature = "visitor")]
+    fn call_visit_record(&mut self, record: &Record, type_id: TypeId) -> Option<TypeContribution> {
+        self.r#gen
+            .visitor
+            .as_deref_mut()
+            .and_then(|v| v.visit_record(record, type_id))
+    }
+
+    #[cfg(not(feature = "visitor"))]
+    fn call_visit_record(
+        &mut self,
+        _record: &Record,
+        _type_id: TypeId,
+    ) -> Option<()> {
+        None
+    }
+
+    /// Helper to call visit_field on the visitor if present
+    #[cfg(feature = "visitor")]
+    fn call_visit_field(&mut self, field: &Field, index: usize) -> Option<FieldContribution> {
+        self.r#gen
+            .visitor
+            .as_deref_mut()
+            .and_then(|v| v.visit_field(field, index))
+    }
+
+    #[cfg(not(feature = "visitor"))]
+    fn call_visit_field(&mut self, _field: &Field, _index: usize) -> Option<()> {
+        None
+    }
+
     pub(super) fn generate_exports<'a>(
         &mut self,
         interface: Option<(InterfaceId, &WorldKey)>,
@@ -1950,6 +1985,9 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
         for (name, mode) in self.modes_of(id) {
+            // Call visitor to get type-level contributions
+            let visitor_contribution = self.call_visit_record(record, id);
+
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
             if !self
@@ -1960,11 +1998,26 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             {
                 derives.extend(additional_derives.clone());
             }
+            // Add visitor-contributed derives
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for derive in &contrib.derives {
+                    derives.insert(derive.clone());
+                }
+            }
             if info.is_copy() {
                 self.push_str("#[repr(C)]\n");
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
             } else if info.is_clone() {
                 derives.insert("Clone".to_string());
+            }
+            // Apply visitor-contributed attributes before derives
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for attr in &contrib.attributes {
+                    self.push_str(attr);
+                    self.push_str("\n");
+                }
             }
             if !derives.is_empty() {
                 self.push_str("#[derive(");
@@ -1974,8 +2027,22 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             self.push_str(&format!("pub struct {}", name));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
-            for field in record.fields.iter() {
+            for (field_idx, field) in record.fields.iter().enumerate() {
+                // Call visitor for field-level contributions
+                let field_contrib = self.call_visit_field(field, field_idx);
+
                 self.rustdoc(&field.docs);
+
+                // Apply field-level attributes
+                #[cfg(feature = "visitor")]
+                if let Some(ref contrib) = field_contrib {
+                    for attr in &contrib.attributes {
+                        self.push_str("    ");
+                        self.push_str(attr);
+                        self.push_str("\n");
+                    }
+                }
+
                 self.push_str("pub ");
                 self.push_str(&to_rust_ident(&field.name));
                 self.push_str(": ");
