@@ -7,10 +7,8 @@
 /// Contributions for type definitions (records, variants, enums, flags, resources).
 ///
 /// This type is passed as a mutable reference to visitor methods.
+#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(default))]
-
 pub struct TypeContribution {
     /// Derive macros to add (e.g., "Clone", "Debug", "serde::Serialize")
     pub derives: Vec<String>,
@@ -41,10 +39,8 @@ impl TypeContribution {
 }
 
 /// Contributions for field definitions within records.
+#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(default))]
-
 pub struct FieldContribution {
     /// Field-level attributes (e.g., "#[serde(rename = \"foo\")]")
     pub attributes: Vec<String>,
@@ -67,10 +63,8 @@ impl FieldContribution {
 }
 
 /// Contributions for variant/enum cases.
+#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(default))]
-
 pub struct VariantCaseContribution {
     /// Case-level attributes (e.g., "#[serde(rename = \"foo\")]")
     pub attributes: Vec<String>,
@@ -93,10 +87,8 @@ impl VariantCaseContribution {
 }
 
 /// Contributions for function definitions.
+#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(default))]
-
 pub struct FunctionContribution {
     /// Function-level attributes (e.g., "#[inline]", "#[must_use]")
     pub attributes: Vec<String>,
@@ -129,10 +121,8 @@ impl FunctionContribution {
 }
 
 /// Contributions for module-level code.
+#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize), serde(default))]
-
 pub struct ModuleContribution {
     /// Use statements to add
     pub use_statements: Vec<String>,
