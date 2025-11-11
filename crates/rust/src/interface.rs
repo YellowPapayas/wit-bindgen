@@ -4,6 +4,10 @@ use crate::{
     to_upper_camel_case, wasm_type, ConstructorReturnType, FnSig, Identifier, InterfaceName,
     Ownership, RuntimeItem, RustFlagsRepr, RustWasm, TypeGeneration,
 };
+
+#[cfg(feature = "visitor")]
+use crate::annotation_visitor::{RustFieldContribution, RustTypeContribution, RustVariantCaseContribution};
+
 use anyhow::Result;
 use heck::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -1950,6 +1954,23 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
         for (name, mode) in self.modes_of(id) {
+            // Visitor pattern for type-level customization:
+            // If the visitor feature is enabled and a visitor is registered, call it to get
+            // custom attributes and derives to add to this struct. The visitor can inspect
+            // the record definition and return attributes like #[serde(...)] or derives like
+            // Serialize/Deserialize that should be added to the generated struct.
+            #[cfg(feature = "visitor")]
+            let mut visitor_contribution: Option<RustTypeContribution> = None;
+
+            #[cfg(feature = "visitor")]
+            if self.r#gen.visitor.is_some() {
+                visitor_contribution = self
+                    .r#gen
+                    .visitor
+                    .as_deref_mut()
+                    .and_then(|v| v.visit_record(record, id));
+            }
+
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
             if !self
@@ -1960,11 +1981,34 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             {
                 derives.extend(additional_derives.clone());
             }
+
+            // Apply visitor-contributed derives:
+            // These are merged with the standard derives (Copy, Clone, etc.) that are
+            // automatically added based on type characteristics. Using a BTreeSet ensures
+            // no duplicates and maintains a stable order in the generated #[derive(...)] attribute.
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for derive in &contrib.derives {
+                    derives.insert(derive.clone());
+                }
+            }
             if info.is_copy() {
                 self.push_str("#[repr(C)]\n");
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
             } else if info.is_clone() {
                 derives.insert("Clone".to_string());
+            }
+
+            // Emit visitor-contributed custom attributes:
+            // These appear before the #[derive(...)] attribute on the struct definition.
+            // Examples include #[serde(rename_all = "camelCase")] or other custom proc-macro
+            // attributes that the visitor wants to apply to customize code generation.
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for attr in &contrib.attributes {
+                    self.push_str(attr);
+                    self.push_str("\n");
+                }
             }
             if !derives.is_empty() {
                 self.push_str("#[derive(");
@@ -1974,8 +2018,41 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             self.push_str(&format!("pub struct {}", name));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
-            for field in record.fields.iter() {
+
+            #[cfg_attr(not(feature = "visitor"), allow(unused_variables))]
+            for (field_idx, field) in record.fields.iter().enumerate() {
+                // Field-level visitor customization:
+                // Call the visitor for each field to allow per-field attribute customization.
+                // The visitor can add attributes like #[serde(skip)] or #[serde(rename = "...")] 
+                // to individual struct fields based on field name, type, or other characteristics.
+                // The field_idx parameter allows positional logic (e.g., skip first field).
+                #[cfg(feature = "visitor")]
+                let mut field_contrib: Option<RustFieldContribution> = None;
+
+                #[cfg(feature = "visitor")]
+                if self.r#gen.visitor.is_some() {
+                    field_contrib = self
+                        .r#gen
+                        .visitor
+                        .as_deref_mut()
+                        .and_then(|v| v.visit_field(field, field_idx));
+                }
+
                 self.rustdoc(&field.docs);
+
+                // Emit field-specific attributes:
+                // These are indented with 4 spaces to appear before each field declaration
+                // inside the struct body. The visitor can customize serialization, validation,
+                // or other field-level behavior through these attributes.
+                #[cfg(feature = "visitor")]
+                if let Some(ref contrib) = field_contrib {
+                    for attr in &contrib.attributes {
+                        self.push_str("    ");
+                        self.push_str(attr);
+                        self.push_str("\n");
+                    }
+                }
+
                 self.push_str("pub ");
                 self.push_str(&to_rust_ident(&field.name));
                 self.push_str(": ");
@@ -2040,14 +2117,11 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 .iter()
                 .map(|c| (c.name.to_upper_camel_case(), &c.docs, c.ty.as_ref())),
             docs,
+            Some(variant),
         );
     }
 
-    fn print_rust_enum<'b>(
-        &mut self,
-        id: TypeId,
-        cases: impl IntoIterator<Item = (String, &'b Docs, Option<&'b Type>)> + Clone,
-        docs: &Docs,
+    fn print_rust_enum<'b>(&mut self, id: TypeId, cases: impl IntoIterator<Item =(String, &'b Docs, Option<&'b Type>)> + Clone, docs: &Docs, _variant: Option<&Variant>
     ) where
         Self: Sized,
     {
@@ -2061,6 +2135,24 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
         for (name, mode) in self.modes_of(id) {
+            // Type-level visitor customization for enums with payloads (Rust-style variants):
+            // Similar to records, but specifically for variant types where each case can carry data.
+            // The visitor can add custom derives like EnumIter or attributes like #[non_exhaustive]
+            // to control how the generated enum behaves. Only called when the variant parameter
+            // is present, which distinguishes these from C-style enums (simple discriminants).
+            #[cfg(feature = "visitor")]
+            let mut visitor_contribution: Option<RustTypeContribution> = None;
+            #[cfg(feature = "visitor")]
+            if let Some(variant) = _variant {
+                if self.r#gen.visitor.is_some() {
+                    visitor_contribution = self
+                        .r#gen
+                        .visitor
+                        .as_deref_mut()
+                        .and_then(|v| v.visit_variant(variant, id));
+                }
+            }
+
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
             if !self
@@ -2071,19 +2163,92 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             {
                 derives.extend(additional_derives.clone());
             }
+
+            // Apply visitor-contributed derives for variants:
+            // Same derive-merging logic as records - visitor derives are combined with
+            // standard derives (Copy, Clone) based on type characteristics, with BTreeSet
+            // ensuring no duplicates in the final #[derive(...)] attribute.
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for derive in &contrib.derives {
+                    derives.insert(derive.clone());
+                }
+            }
+
             if info.is_copy() {
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
             } else if info.is_clone() {
                 derives.insert("Clone".to_string());
             }
+
+            // Emit visitor-contributed enum-level attributes:
+            // These appear before the #[derive(...)] on the enum definition itself.
+            // Can include attributes like #[repr(C)], #[non_exhaustive], or custom
+            // proc-macro attributes that apply to the entire enum type.
+            #[cfg(feature = "visitor")]
+            if let Some(ref contrib) = visitor_contribution {
+                for attr in &contrib.attributes {
+                    self.push_str(attr);
+                    self.push_str("\n");
+                }
+            }
+
             if !derives.is_empty() {
                 self.push_str("#[derive(");
                 self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
-                self.push_str(")]\n")
+                self.push_str(")]\n");
             }
+            
+            // emit derives and enum declaration
             self.push_str(&format!("pub enum {name}"));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
+
+            for (_case_idx, (case_name, case_docs, payload)) in cases.clone().into_iter().enumerate() {
+                // Variant-case-level visitor customization:
+                // Called for each individual enum variant to allow per-variant attributes.
+                // This enables customization like #[serde(rename = "...")] on specific variants,
+                // or skipping certain variants during serialization. The visitor receives both
+                // the case definition and its index within the variant's cases list, allowing
+                // both content-based and position-based decisions.
+                #[cfg(feature = "visitor")]
+                let mut case_contrib: Option<RustVariantCaseContribution> = None;
+                #[cfg(feature = "visitor")]
+                if let Some(v) = _variant {
+                    if self.r#gen.visitor.is_some() {
+                        case_contrib = self
+                            .r#gen
+                            .visitor
+                            .as_deref_mut()
+                            .and_then(|visitor| visitor.visit_variant_case(&v.cases[_case_idx], _case_idx));
+                    }
+                }
+
+                self.rustdoc(case_docs);
+
+                // Emit variant-case-specific attributes:
+                // These are indented with 4 spaces to appear before each variant case inside
+                // the enum body. Commonly used for renaming variants in serialization formats
+                // or adding validation/documentation attributes to specific enum cases.
+                #[cfg(feature = "visitor")]
+                if let Some(ref contrib) = case_contrib {
+                    for attr in &contrib.attributes {
+                        self.push_str("    ");
+                        self.push_str(attr);
+                        self.push_str("\n");
+                    }
+                }
+
+                self.push_str(&case_name);
+                if let Some(ty) = payload {
+                    self.push_str("(");
+                    let mode = self.filter_mode(ty, mode);
+                    self.print_ty(ty, mode);
+                    self.push_str(")")
+                }
+                self.push_str(",\n");
+            }
+
             for (case_name, docs, payload) in cases.clone() {
                 self.rustdoc(docs);
                 self.push_str(&case_name);
@@ -2214,9 +2379,11 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         for attr in attrs {
             self.push_str(&format!("{}\n", attr));
         }
+
         self.push_str("#[repr(");
         self.int_repr(enum_.tag());
         self.push_str(")]\n");
+
         // We use a BTree set to make sure we don't have any duplicates and a stable order
         let mut derives: BTreeSet<String> = BTreeSet::new();
         if !self
@@ -2227,6 +2394,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         {
             derives.extend(self.r#gen.opts.additional_derive_attributes.to_vec());
         }
+
         derives.extend(
             ["Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord"]
                 .into_iter()
@@ -2236,12 +2404,18 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
         self.push_str(")]\n");
         self.push_str(&format!("pub enum {name} {{\n"));
-        for case in enum_.cases.iter() {
+
+        // enumerate cases
+        for (_case_idx, case) in enum_.cases.iter().enumerate() {
             self.rustdoc(&case.docs);
+
+            // apply existing case_attr callback
             self.push_str(&case_attr(case));
+
             self.push_str(&case.name.to_upper_camel_case());
             self.push_str(",\n");
         }
+
         self.push_str("}\n");
 
         // Auto-synthesize an implementation of the standard `Error` trait for
