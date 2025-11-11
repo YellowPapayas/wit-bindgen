@@ -11,7 +11,7 @@ fn version() -> &'static str {
     option_env!("CARGO_VERSION_INFO").unwrap_or(env!("CARGO_PKG_VERSION"))
 }
 
-#[derive(Debug, Parser)]
+#[derive(Parser)]
 #[command(version = version())]
 enum Opt {
     /// This generator outputs a Markdown file describing an interface.
