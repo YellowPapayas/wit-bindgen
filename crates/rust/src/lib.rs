@@ -147,7 +147,7 @@ fn parse_with(s: &str) -> Result<(String, WithOption), String> {
     Ok((k.to_string(), v))
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[cfg_attr(
     feature = "serde",
