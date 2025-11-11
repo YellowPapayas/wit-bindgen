@@ -8,16 +8,10 @@ use crate::{
 #[cfg(feature = "visitor")]
 use crate::annotation_visitor::{RustFieldContribution, RustTypeContribution, RustVariantCaseContribution};
 
-// When visitor feature is disabled, define dummy types so type annotations work
-#[cfg(not(feature = "visitor"))]
-type RustTypeContribution = ();
-#[cfg(not(feature = "visitor"))]
-type RustFieldContribution = ();
-#[cfg(not(feature = "visitor"))]
-type RustVariantCaseContribution = ();
-
 use anyhow::Result;
 use heck::*;
+#[cfg(feature = "visitor")]
+use wit_bindgen_core::visitor;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::mem;
@@ -1963,19 +1957,16 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .collect();
         for (name, mode) in self.modes_of(id) {
             // Call visitor to get type-level contributions
-            let visitor_contribution: Option<RustTypeContribution> = {
-                #[cfg(feature = "visitor")]
-                {
-                    self.r#gen
-                        .visitor
-                        .as_deref_mut()
-                        .and_then(|v| v.visit_record(record, id))
-                }
-                #[cfg(not(feature = "visitor"))]
-                {
-                    None
-                }
-            };
+            #[cfg(feature = "visitor")]
+            let mut visitor_contribution: Option<RustTypeContribution> = None;
+            #[cfg(feature = "visitor")]
+            if self.r#gen.visitor.is_some() {
+                visitor_contribution = self
+                    .r#gen
+                    .visitor
+                    .as_deref_mut()
+                    .and_then(|v| v.visit_type(record, id));
+            }
 
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
@@ -2016,21 +2007,18 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             self.push_str(&format!("pub struct {}", name));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
-            for (field_idx, field) in record.fields.iter().enumerate() {
+            for (_field_idx, field) in record.fields.iter().enumerate() {
                 // Call visitor for field-level contributions
-                let field_contrib: Option<RustFieldContribution> = {
-                    #[cfg(feature = "visitor")]
-                    {
-                        self.r#gen
-                            .visitor
-                            .as_deref_mut()
-                            .and_then(|v| v.visit_field(field, field_idx))
-                    }
-                    #[cfg(not(feature = "visitor"))]
-                    {
-                        None
-                    }
-                };
+                #[cfg(feature = "visitor")]
+                let mut field_contrib: Option<RustFieldContribution> = None;
+                #[cfg(feature = "visitor")]
+                if self.r#gen.visitor.is_some() {
+                    field_contrib = self
+                        .r#gen
+                        .visitor
+                        .as_deref_mut()
+                        .and_then(|v| v.visit_record_field(field, field_idx));
+                }
 
                 self.rustdoc(&field.docs);
 
@@ -2112,7 +2100,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         );
     }
 
-    fn print_rust_enum<'b>(&mut self, id: TypeId, cases: impl IntoIterator<Item =(String, &'b Docs, Option<&'b Type>)> + Clone, docs: &Docs, variant: Option<&Variant>
+    fn print_rust_enum<'b>(&mut self, id: TypeId, cases: impl IntoIterator<Item =(String, &'b Docs, Option<&'b Type>)> + Clone, docs: &Docs, _variant: Option<&Variant>
     ) where
         Self: Sized,
     {
@@ -2126,21 +2114,18 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
         for (name, mode) in self.modes_of(id) {
-            let visitor_contribution: Option<RustTypeContribution> = if let Some(variant) = variant {
-                #[cfg(feature = "visitor")]
-                {
-                    self.r#gen
+            #[cfg(feature = "visitor")]
+            let mut visitor_contribution: Option<RustTypeContribution> = None;
+            #[cfg(feature = "visitor")]
+            if let Some(variant) = _variant {
+                if self.r#gen.visitor.is_some() {
+                    visitor_contribution = self
+                        .r#gen
                         .visitor
                         .as_deref_mut()
-                        .and_then(|v| v.visit_variant(variant, id))
+                        .and_then(|v| v.visit_type(variant, id));
                 }
-                #[cfg(not(feature = "visitor"))]
-                {
-                    None
-                }
-            } else {
-                None
-            };
+            }
 
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
@@ -2186,23 +2171,22 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
 
-            for (case_idx, (case_name, case_docs, payload)) in cases.clone().into_iter().enumerate() {
+            for (_case_idx, (case_name, case_docs, payload)) in cases.clone().into_iter().enumerate() {
                 // Call visitor hook for case-level contributions
-                let case_contrib: Option<RustVariantCaseContribution> = if let Some(v) = variant {
-                    #[cfg(feature = "visitor")]
-                    {
-                        self.r#gen
+                #[cfg(feature = "visitor")]
+                let mut case_contrib: Option<RustVariantCaseContribution> = None;
+                #[cfg(feature = "visitor")]
+                if let Some(v) = _variant {
+                    if self.r#gen.visitor.is_some() {
+                        use wit_bindgen_core::visitor;
+
+                        case_contrib = self
+                            .r#gen
                             .visitor
                             .as_deref_mut()
-                            .and_then(|visitor| visitor.visit_variant_case(&v.cases[case_idx], case_idx))
+                            .and_then(|visitor| visitor.visit_variant_case(&v.cases[_case_idx], _case_idx));
                     }
-                    #[cfg(not(feature = "visitor"))]
-                    {
-                        None
-                    }
-                } else {
-                    None
-                };
+                }
 
                 self.rustdoc(case_docs);
 
@@ -2352,19 +2336,15 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         let info = self.info(id);
 
         // call visit hook for enum type-level contributions
-        let visitor_contribution: Option<RustTypeContribution> = {
-            #[cfg(feature = "visitor")]
-            {
-                self.r#gen
-                    .visitor
-                    .as_deref_mut()
-                    .and_then(|v| v.visit_enum(enum_, id))
-            }
-            #[cfg(not(feature = "visitor"))]
-            {
-                None
-            }
-        };
+        #[cfg(feature = "visitor")]
+        let mut visitor_contribution: Option<RustTypeContribution> = None;
+        #[cfg(feature = "visitor")]
+        if self.r#gen.visitor.is_some() {
+            visitor_contribution = self.r#gen
+                .visitor
+                .as_deref_mut()
+                .and_then(|v| v.visit_type(enum_, id));
+        }
 
         let name = to_upper_camel_case(name);
         self.rustdoc(docs);
@@ -2415,26 +2395,22 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str(&format!("pub enum {name} {{\n"));
 
         // enumerate cases for visitor
-        for (case_idx, case) in enum_.cases.iter().enumerate() {
+        for (_case_idx, case) in enum_.cases.iter().enumerate() {
             // call visitor for enum case (creating a temp Case with ty=None for enum cases)
-            let case_contrib: Option<RustVariantCaseContribution> = {
-                #[cfg(feature = "visitor")]
-                {
-                    let temp_case = Case {
-                        name: case.name.clone(),
-                        docs: case.docs.clone(),
-                        ty: None,
-                    };
-                    self.r#gen
-                        .visitor
-                        .as_deref_mut()
-                        .and_then(|v| v.visit_variant_case(&temp_case, case_idx))
-                }
-                #[cfg(not(feature = "visitor"))]
-                {
-                    None
-                }
-            };
+            #[cfg(feature = "visitor")]
+            let mut case_contrib: Option<RustVariantCaseContribution> = None;
+            #[cfg(feature = "visitor")]
+            if self.r#gen.visitor.is_some() {
+                let temp_case = Case {
+                    name: case.name.clone(),
+                    docs: case.docs.clone(),
+                    ty: None,
+                };
+                case_contrib = self.r#gen
+                    .visitor
+                    .as_deref_mut()
+                    .and_then(|v| v.visit_variant_case(&temp_case, case_idx));
+            }
 
             self.rustdoc(&case.docs);
 
