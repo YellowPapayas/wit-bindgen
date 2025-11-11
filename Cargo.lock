@@ -1019,7 +1019,7 @@ checksum = "8d0fcd636ad2b29a7c0490799a23ad61d1c8dedfafdb970447fddd0549502b60"
 [[package]]
 name = "wasm-compose"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "anyhow",
  "heck",
@@ -1048,7 +1048,7 @@ dependencies = [
 [[package]]
 name = "wasm-encoder"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "leb128fmt",
  "wasmparser 0.240.0",
@@ -1073,7 +1073,7 @@ dependencies = [
 [[package]]
 name = "wasm-metadata"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -1095,7 +1095,7 @@ dependencies = [
 [[package]]
 name = "wasmparser"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "bitflags",
  "hashbrown 0.15.5",
@@ -1107,7 +1107,7 @@ dependencies = [
 [[package]]
 name = "wast"
 version = "240.0.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "bumpalo",
  "leb128fmt",
@@ -1119,7 +1119,7 @@ dependencies = [
 [[package]]
 name = "wat"
 version = "1.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "wast",
 ]
@@ -1389,7 +1389,7 @@ dependencies = [
 [[package]]
 name = "wit-component"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -1408,7 +1408,7 @@ dependencies = [
 [[package]]
 name = "wit-parser"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=main#43f58ad0b161b233f44e59d163ab51ff09dda7a7"
 dependencies = [
  "anyhow",
  "id-arena",

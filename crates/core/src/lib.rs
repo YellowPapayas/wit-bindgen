@@ -15,11 +15,6 @@ pub use path::name_package_module;
 mod async_;
 pub use async_::AsyncFilterSet;
 
-#[cfg(feature = "visitor")]
-pub mod visitor;
-#[cfg(feature = "visitor")]
-pub use visitor::Visitor;
-
 #[derive(Default, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Direction {
     #[default]

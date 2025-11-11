@@ -16,12 +16,6 @@ use wit_bindgen_core::{
 mod bindgen;
 mod interface;
 
-#[cfg(feature = "visitor")]
-pub mod annotation_visitor;
-
-#[cfg(feature = "visitor")]
-pub use annotation_visitor::RustVisitor;
-
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
     /// macro invocation.
@@ -58,9 +52,6 @@ struct RustWasm {
 
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
-
-    #[cfg(feature = "visitor")]
-    visitor: Option<Box<dyn RustVisitor>>,
 }
 
 #[derive(Default)]
@@ -147,7 +138,7 @@ fn parse_with(s: &str) -> Result<(String, WithOption), String> {
     Ok((k.to_string(), v))
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[cfg_attr(
     feature = "serde",
@@ -283,22 +274,12 @@ pub struct Opts {
     #[cfg_attr(feature = "clap", clap(flatten))]
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub async_: AsyncFilterSet,
-
-    #[cfg(feature = "visitor")]
-    #[cfg_attr(feature = "serde", serde(skip))]
-    pub visitor: Option<Box<dyn RustVisitor>>,
 }
 
 impl Opts {
-    pub fn build(#[cfg_attr(not(feature = "visitor"), allow(unused_mut))] mut self) -> Box<dyn WorldGenerator> {
+    pub fn build(self) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
-
-        #[cfg(feature = "visitor")]
-        {
-            r.visitor = self.visitor.take();
-        }
-
         r.opts = self;
         Box::new(r)
     }
