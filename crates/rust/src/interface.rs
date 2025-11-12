@@ -714,11 +714,11 @@ pub mod vtable{ordinal} {{
 
         // call visitors to get function body prefix contributions
         #[cfg(feature = "visitor")]
-        let mut func_contrib: Option<crate::annotation_visitor::RustFunctionContribution> = None;
+        let mut func_contrib = None;
         #[cfg(feature = "visitor")]
         for visitor in &mut self.r#gen.visitors {
             if let Some(contrib) = visitor.visit_function(func) {
-                let aggregate = func_contrib.get_or_insert_with(crate::annotation_visitor::RustFunctionContribution::new);
+                let aggregate = func_contrib.get_or_insert_with(Default::default);
                 aggregate.attributes.extend(contrib.attributes);
                 aggregate.body_prefix.extend(contrib.body_prefix);
             }
