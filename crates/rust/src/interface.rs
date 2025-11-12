@@ -1955,20 +1955,20 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .collect();
         for (name, mode) in self.modes_of(id) {
             // Visitor pattern for type-level customization:
-            // If the visitor feature is enabled and a visitor is registered, call it to get
-            // custom attributes and derives to add to this struct. The visitor can inspect
+            // If the visitor feature is enabled and any visitors are registered, call each to get
+            // custom attributes and derives to add to this struct. Visitors can inspect
             // the record definition and return attributes like #[serde(...)] or derives like
             // Serialize/Deserialize that should be added to the generated struct.
             #[cfg(feature = "visitor")]
             let mut visitor_contribution: Option<RustTypeContribution> = None;
 
             #[cfg(feature = "visitor")]
-            if self.r#gen.visitor.is_some() {
-                visitor_contribution = self
-                    .r#gen
-                    .visitor
-                    .as_deref_mut()
-                    .and_then(|v| v.visit_record(record, id));
+            for visitor in &mut self.r#gen.visitors {
+                if let Some(contrib) = visitor.visit_record(record, id) {
+                    let aggregate = visitor_contribution.get_or_insert_with(RustTypeContribution::new);
+                    aggregate.derives.extend(contrib.derives);
+                    aggregate.attributes.extend(contrib.attributes);
+                }
             }
 
             self.rustdoc(docs);
@@ -2002,7 +2002,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // Emit visitor-contributed custom attributes:
             // These appear before the #[derive(...)] attribute on the struct definition.
             // Examples include #[serde(rename_all = "camelCase")] or other custom proc-macro
-            // attributes that the visitor wants to apply to customize code generation.
+            // attributes that visitors want to apply to customize code generation.
             #[cfg(feature = "visitor")]
             if let Some(ref contrib) = visitor_contribution {
                 for attr in &contrib.attributes {
@@ -2022,27 +2022,26 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             #[cfg_attr(not(feature = "visitor"), allow(unused_variables))]
             for (field_idx, field) in record.fields.iter().enumerate() {
                 // Field-level visitor customization:
-                // Call the visitor for each field to allow per-field attribute customization.
-                // The visitor can add attributes like #[serde(skip)] or #[serde(rename = "...")] 
+                // Call each visitor for each field to allow per-field attribute customization.
+                // Visitors can add attributes like #[serde(skip)] or #[serde(rename = "...")]
                 // to individual struct fields based on field name, type, or other characteristics.
                 // The field_idx parameter allows positional logic (e.g., skip first field).
                 #[cfg(feature = "visitor")]
                 let mut field_contrib: Option<RustFieldContribution> = None;
 
                 #[cfg(feature = "visitor")]
-                if self.r#gen.visitor.is_some() {
-                    field_contrib = self
-                        .r#gen
-                        .visitor
-                        .as_deref_mut()
-                        .and_then(|v| v.visit_field(field, field_idx));
+                for visitor in &mut self.r#gen.visitors {
+                    if let Some(contrib) = visitor.visit_field(field, field_idx) {
+                        let aggregate = field_contrib.get_or_insert_with(RustFieldContribution::new);
+                        aggregate.attributes.extend(contrib.attributes);
+                    }
                 }
 
                 self.rustdoc(&field.docs);
 
                 // Emit field-specific attributes:
                 // These are indented with 4 spaces to appear before each field declaration
-                // inside the struct body. The visitor can customize serialization, validation,
+                // inside the struct body. Visitors can customize serialization, validation,
                 // or other field-level behavior through these attributes.
                 #[cfg(feature = "visitor")]
                 if let Some(ref contrib) = field_contrib {
@@ -2137,19 +2136,19 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         for (name, mode) in self.modes_of(id) {
             // Type-level visitor customization for enums with payloads (Rust-style variants):
             // Similar to records, but specifically for variant types where each case can carry data.
-            // The visitor can add custom derives like EnumIter or attributes like #[non_exhaustive]
+            // Visitors can add custom derives like EnumIter or attributes like #[non_exhaustive]
             // to control how the generated enum behaves. Only called when the variant parameter
             // is present, which distinguishes these from C-style enums (simple discriminants).
             #[cfg(feature = "visitor")]
             let mut visitor_contribution: Option<RustTypeContribution> = None;
             #[cfg(feature = "visitor")]
             if let Some(variant) = _variant {
-                if self.r#gen.visitor.is_some() {
-                    visitor_contribution = self
-                        .r#gen
-                        .visitor
-                        .as_deref_mut()
-                        .and_then(|v| v.visit_variant(variant, id));
+                for visitor in &mut self.r#gen.visitors {
+                    if let Some(contrib) = visitor.visit_variant(variant, id) {
+                        let aggregate = visitor_contribution.get_or_insert_with(RustTypeContribution::new);
+                        aggregate.derives.extend(contrib.derives);
+                        aggregate.attributes.extend(contrib.attributes);
+                    }
                 }
             }
 
@@ -2208,19 +2207,18 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 // Variant-case-level visitor customization:
                 // Called for each individual enum variant to allow per-variant attributes.
                 // This enables customization like #[serde(rename = "...")] on specific variants,
-                // or skipping certain variants during serialization. The visitor receives both
+                // or skipping certain variants during serialization. Each visitor receives both
                 // the case definition and its index within the variant's cases list, allowing
                 // both content-based and position-based decisions.
                 #[cfg(feature = "visitor")]
                 let mut case_contrib: Option<RustVariantCaseContribution> = None;
                 #[cfg(feature = "visitor")]
                 if let Some(v) = _variant {
-                    if self.r#gen.visitor.is_some() {
-                        case_contrib = self
-                            .r#gen
-                            .visitor
-                            .as_deref_mut()
-                            .and_then(|visitor| visitor.visit_variant_case(&v.cases[_case_idx], _case_idx));
+                    for visitor in &mut self.r#gen.visitors {
+                        if let Some(contrib) = visitor.visit_variant_case(&v.cases[_case_idx], _case_idx) {
+                            let aggregate = case_contrib.get_or_insert_with(RustVariantCaseContribution::new);
+                            aggregate.attributes.extend(contrib.attributes);
+                        }
                     }
                 }
 
