@@ -60,7 +60,7 @@ struct RustWasm {
     stream_payloads: IndexMap<String, String>,
 
     #[cfg(feature = "visitor")]
-    visitor: Option<Box<dyn RustVisitor>>,
+    visitors: Vec<Box<dyn RustVisitor>>,
 }
 
 #[derive(Default)]
@@ -286,7 +286,7 @@ pub struct Opts {
 
     #[cfg(feature = "visitor")]
     #[cfg_attr(feature = "serde", serde(skip))]
-    pub visitor: Option<Box<dyn RustVisitor>>,
+    pub visitors: Vec<Box<dyn RustVisitor>>,
 }
 
 impl Opts {
@@ -296,7 +296,7 @@ impl Opts {
 
         #[cfg(feature = "visitor")]
         {
-            r.visitor = self.visitor.take();
+            r.visitors = mem::take(&mut self.visitors);
         }
 
         r.opts = self;
