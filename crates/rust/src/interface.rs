@@ -714,19 +714,17 @@ pub mod vtable{ordinal} {{
 
         // call visitors to get function body prefix contributions
         #[cfg(feature = "visitor")]
-        let mut func_contrib = None;
+        let mut func_contribs = Vec::new();
         #[cfg(feature = "visitor")]
         for visitor in &mut self.r#gen.visitors {
             if let Some(contrib) = visitor.visit_function(func) {
-                let aggregate = func_contrib.get_or_insert_with(Default::default);
-                aggregate.attributes.extend(contrib.attributes);
-                aggregate.body_prefix.extend(contrib.body_prefix);
+                func_contribs.push(contrib);
             }
         }
 
-        // inject body_prefix code
+        // inject body_prefix code from all visitors in order
         #[cfg(feature = "visitor")]
-        if let Some(contrib) = &func_contrib {
+        for contrib in &func_contribs {
             for code_line in &contrib.body_prefix {
                 uwriteln!(self.src, "    {}", code_line);
             }
