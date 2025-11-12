@@ -711,6 +711,27 @@ pub mod vtable{ordinal} {{
         self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
         let params = self.print_signature(func, async_, &sig);
         self.src.push_str("{\n");
+
+        // call visitors to get function body prefix contributions
+        #[cfg(feature = "visitor")]
+        let mut func_contrib: Option<crate::annotation_visitor::RustFunctionContribution> = None;
+        #[cfg(feature = "visitor")]
+        for visitor in &mut self.r#gen.visitors {
+            if let Some(contrib) = visitor.visit_function(func) {
+                let aggregate = func_contrib.get_or_insert_with(crate::annotation_visitor::RustFunctionContribution::new);
+                aggregate.attributes.extend(contrib.attributes);
+                aggregate.body_prefix.extend(contrib.body_prefix);
+            }
+        }
+
+        // inject body_prefix code
+        #[cfg(feature = "visitor")]
+        if let Some(contrib) = &func_contrib {
+            for code_line in &contrib.body_prefix {
+                uwriteln!(self.src, "    {}", code_line);
+            }
+        }
+
         self.src.push_str("unsafe {\n");
 
         if async_ {
