@@ -26,4 +26,4 @@ clap = { workspace = true, optional = true }
 default = []
 serde = ['dep:serde']
 clap = ['dep:clap']
-visitor = []
+annotation = []

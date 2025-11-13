@@ -5,7 +5,7 @@ use crate::{
     Ownership, RuntimeItem, RustFlagsRepr, RustWasm, TypeGeneration,
 };
 
-#[cfg(feature = "visitor")]
+#[cfg(feature = "annotation")]
 use crate::annotation_visitor::{RustFieldContribution, RustModuleContribution, RustTypeContribution, RustVariantCaseContribution};
 
 use anyhow::Result;
@@ -440,13 +440,13 @@ macro_rules! {macro_name} {{
     }
 
     pub fn finish_append_submodule(mut self, snake: &str, module_path: Vec<String>, docs: &Docs) {
-        #[cfg_attr(not(feature = "visitor"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "annotation"), allow(unused_mut))]
         let mut module = self.finish();
 
         // Visitor pattern for interface-level customization:
-        // If the visitor feature is enabled and any visitors are registered, call each to get
+        // If the annotation feature is enabled and any visitors are registered, call each to get
         // custom module-level contributions (use statements, additional code, etc.).
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         {
             let interface_obj = match self.identifier {
                 Identifier::Interface(id, _) => Some(&self.resolve.interfaces[id]),
@@ -745,9 +745,9 @@ pub mod vtable{ordinal} {{
         self.src.push_str("{\n");
 
         // call visitors to get function body prefix contributions
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         let mut func_contribs = Vec::new();
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for visitor in &mut self.r#gen.visitors {
             if let Some(contrib) = visitor.visit_function(func) {
                 func_contribs.push(contrib);
@@ -755,7 +755,7 @@ pub mod vtable{ordinal} {{
         }
 
         // inject body_prefix code from all visitors in order
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for contrib in &func_contribs {
             for code_line in &contrib.body_prefix {
                 uwriteln!(self.src, "    {}", code_line);
@@ -1110,9 +1110,9 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str(" { unsafe {");
 
         // call visitors to get function body prefix contributions
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         let mut func_contribs = Vec::new();
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for visitor in &mut self.r#gen.visitors {
             if let Some(contrib) = visitor.visit_function(func) {
                 func_contribs.push(contrib);
@@ -1120,7 +1120,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         }
 
         // inject body_prefix code from all visitors in order
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for contrib in &func_contribs {
             for code_line in &contrib.body_prefix {
                 uwriteln!(self.src, "{}", code_line);
@@ -2024,14 +2024,14 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .collect();
         for (name, mode) in self.modes_of(id) {
             // Visitor pattern for type-level customization:
-            // If the visitor feature is enabled and any visitors are registered, call each to get
+            // If the annotation feature is enabled and any visitors are registered, call each to get
             // custom attributes and derives to add to this struct. Visitors can inspect
             // the record definition and return attributes like #[serde(...)] or derives like
             // Serialize/Deserialize that should be added to the generated struct.
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             let mut visitor_contribution = RustTypeContribution::new();
 
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             for visitor in &mut self.r#gen.visitors {
                 if let Some(contrib) = visitor.visit_record(record, id) {
                     visitor_contribution.derives.extend(contrib.derives);
@@ -2054,7 +2054,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // These are merged with the standard derives (Copy, Clone, etc.) that are
             // automatically added based on type characteristics. Using a BTreeSet ensures
             // no duplicates and maintains a stable order in the generated #[derive(...)] attribute.
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             for derive in &visitor_contribution.derives {
                 derives.insert(derive.clone());
             }
@@ -2069,7 +2069,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // These appear before the #[derive(...)] attribute on the struct definition.
             // Examples include #[serde(rename_all = "camelCase")] or other custom proc-macro
             // attributes that visitors want to apply to customize code generation.
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             for attr in &visitor_contribution.attributes {
                 self.push_str(attr);
                 self.push_str("\n");
@@ -2083,17 +2083,17 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
 
-            #[cfg_attr(not(feature = "visitor"), allow(unused_variables))]
+            #[cfg_attr(not(feature = "annotation"), allow(unused_variables))]
             for (field_idx, field) in record.fields.iter().enumerate() {
                 // Field-level visitor customization:
                 // Call each visitor for each field to allow per-field attribute customization.
                 // Visitors can add attributes like #[serde(skip)] or #[serde(rename = "...")]
                 // to individual struct fields based on field name, type, or other characteristics.
                 // The field_idx parameter allows positional logic (e.g., skip first field).
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotation")]
                 let mut field_contrib = RustFieldContribution::new();
 
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotation")]
                 for visitor in &mut self.r#gen.visitors {
                     if let Some(contrib) = visitor.visit_field(field, field_idx) {
                         field_contrib.attributes.extend(contrib.attributes);
@@ -2106,7 +2106,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 // These are indented with 4 spaces to appear before each field declaration
                 // inside the struct body. Visitors can customize serialization, validation,
                 // or other field-level behavior through these attributes.
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotation")]
                 for attr in &field_contrib.attributes {
                     self.push_str("    ");
                     self.push_str(attr);
@@ -2200,9 +2200,9 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // Visitors can add custom derives like EnumIter or attributes like #[non_exhaustive]
             // to control how the generated enum behaves. Only called when the variant parameter
             // is present, which distinguishes these from C-style enums (simple discriminants).
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             let mut visitor_contribution = RustTypeContribution::new();
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             if let Some(variant) = _variant {
                 for visitor in &mut self.r#gen.visitors {
                     if let Some(contrib) = visitor.visit_variant(variant, id) {
@@ -2227,7 +2227,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // Same derive-merging logic as records - visitor derives are combined with
             // standard derives (Copy, Clone) based on type characteristics, with BTreeSet
             // ensuring no duplicates in the final #[derive(...)] attribute.
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             for derive in &visitor_contribution.derives {
                 derives.insert(derive.clone());
             }
@@ -2242,7 +2242,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // These appear before the #[derive(...)] on the enum definition itself.
             // Can include attributes like #[repr(C)], #[non_exhaustive], or custom
             // proc-macro attributes that apply to the entire enum type.
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             for attr in &visitor_contribution.attributes {
                 self.push_str(attr);
                 self.push_str("\n");
@@ -2266,9 +2266,9 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 // or skipping certain variants during serialization. Each visitor receives both
                 // the case definition and its index within the variant's cases list, allowing
                 // both content-based and position-based decisions.
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotation")]
                 let mut case_contrib = RustVariantCaseContribution::new();
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotation")]
                 if let Some(v) = _variant {
                     for visitor in &mut self.r#gen.visitors {
                         if let Some(contrib) = visitor.visit_variant_case(&v.cases[_case_idx], _case_idx) {
@@ -2283,7 +2283,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 // These are indented with 4 spaces to appear before each variant case inside
                 // the enum body. Commonly used for renaming variants in serialization formats
                 // or adding validation/documentation attributes to specific enum cases.
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotation")]
                 for attr in &case_contrib.attributes {
                     self.push_str("    ");
                     self.push_str(attr);
@@ -2426,12 +2426,12 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         let info = self.info(id);
 
         // Visitor pattern for enum-level customization:
-        // If the visitor feature is enabled and any visitors are registered, call each to get
+        // If the annotation feature is enabled and any visitors are registered, call each to get
         // custom attributes and derives to add to this enum.
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         let mut visitor_contribution = RustTypeContribution::new();
 
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for visitor in &mut self.r#gen.visitors {
             if let Some(contrib) = visitor.visit_enum(enum_, id) {
                 visitor_contribution.derives.extend(contrib.derives);
@@ -2446,7 +2446,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         }
 
         // Emit visitor-contributed custom attributes
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for attr in &visitor_contribution.attributes {
             self.push_str(&format!("{}\n", attr));
         }
@@ -2467,7 +2467,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         }
 
         // Apply visitor-contributed derives
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for derive in &visitor_contribution.derives {
             derives.insert(derive.clone());
         }
@@ -2830,12 +2830,12 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
 
     fn type_resource(&mut self, _id: TypeId, name: &str, docs: &Docs) {
         // Visitor pattern for resource-level customization:
-        // If the visitor feature is enabled and any visitors are registered, call each to get
+        // If the annotation feature is enabled and any visitors are registered, call each to get
         // custom attributes and derives to add to this resource type.
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         let mut visitor_contribution = RustTypeContribution::new();
 
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for visitor in &mut self.r#gen.visitors {
             if let Some(contrib) = visitor.visit_resource(_id) {
                 visitor_contribution.derives.extend(contrib.derives);
@@ -2846,7 +2846,7 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
         self.rustdoc(docs);
 
         // Emit visitor-contributed custom attributes before the struct
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for attr in &visitor_contribution.attributes {
             self.src.push_str(&format!("{}\n", attr));
         }
@@ -2855,9 +2855,9 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for InterfaceGenerator<'a> {
         let resource = self.path_to_resource();
 
         // Build derive list with visitor contributions
-        #[cfg_attr(not(feature = "visitor"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "annotation"), allow(unused_mut))]
         let mut derives = vec!["Debug"];
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for derive in &visitor_contribution.derives {
             derives.push(derive.as_str());
         }
@@ -3070,12 +3070,12 @@ impl<'a> {camel}Borrow<'a>{{
 
     fn type_flags(&mut self, _id: TypeId, name: &str, flags: &Flags, docs: &Docs) {
         // Visitor pattern for flags-level customization:
-        // If the visitor feature is enabled and any visitors are registered, call each to get
+        // If the annotation feature is enabled and any visitors are registered, call each to get
         // custom attributes and derives to add to this flags type.
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         let mut visitor_contribution = RustTypeContribution::new();
 
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for visitor in &mut self.r#gen.visitors {
             if let Some(contrib) = visitor.visit_flags(flags, _id) {
                 visitor_contribution.derives.extend(contrib.derives);
@@ -3090,7 +3090,7 @@ impl<'a> {camel}Borrow<'a>{{
         self.rustdoc(docs);
 
         // Emit visitor-contributed custom attributes
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for attr in &visitor_contribution.attributes {
             self.src.push_str(&format!("{}\n", attr));
         }
@@ -3098,12 +3098,12 @@ impl<'a> {camel}Borrow<'a>{{
         let repr = RustFlagsRepr::new(flags);
 
         // Build derive list with visitor contributions
-        #[cfg_attr(not(feature = "visitor"), allow(unused_mut))]
+        #[cfg_attr(not(feature = "annotation"), allow(unused_mut))]
         let mut derives = vec![
             "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Debug", "Clone", "Copy"
         ];
 
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         for derive in &visitor_contribution.derives {
             derives.push(derive.as_str());
         }

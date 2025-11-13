@@ -1154,7 +1154,7 @@ This is enforced by:
 
 ## Feature Gating
 
-The visitor functionality is **feature-gated** behind the `visitor` feature flag. This means users must explicitly enable it in their `Cargo.toml` to use visitor functionality.
+The visitor functionality is **feature-gated** behind the `annotation` feature flag. This means users must explicitly enable it in their `Cargo.toml` to use visitor functionality.
 
 ### Why Feature Gate?
 
@@ -1170,12 +1170,12 @@ Users who want to use visitors must enable the feature:
 **In `Cargo.toml`:**
 ```toml
 [dependencies]
-wit-bindgen = { version = "0.47", features = ["visitor"] }
+wit-bindgen = { version = "0.47", features = ["annotation"] }
 ```
 
 **Or when using the macro:**
 ```rust
-// This will only work if the "visitor" feature is enabled
+// This will only work if the "annotation" feature is enabled
 wit_bindgen::generate!({
     world: "my-world",
     visitor: Box::new(MyVisitor),
@@ -1184,7 +1184,7 @@ wit_bindgen::generate!({
 
 ### Implementation Strategy
 
-The feature gate is implemented using Rust's conditional compilation (`#[cfg(feature = "visitor")]`):
+The feature gate is implemented using Rust's conditional compilation (`#[cfg(feature = "annotation")]`):
 
 #### 1. Feature Declaration
 
@@ -1193,7 +1193,7 @@ The feature gate is implemented using Rust's conditional compilation (`#[cfg(fea
 ```toml
 [features]
 default = []
-visitor = []  # No dependencies needed, just a flag
+annotation = []  # No dependencies needed, just a flag
 ```
 
 #### 2. Module Gating
@@ -1202,10 +1202,10 @@ visitor = []  # No dependencies needed, just a flag
 
 ```rust
 // Only compile the visitor module when the feature is enabled
-#[cfg(feature = "visitor")]
+#[cfg(feature = "annotation")]
 pub mod visitor;
 
-#[cfg(feature = "visitor")]
+#[cfg(feature = "annotation")]
 pub use visitor::{
     WitVisitor, BeforeAction,
     RecordContext, VariantContext, EnumContext, FlagsContext, ResourceContext,
@@ -1223,7 +1223,7 @@ To keep the main generation code clean, use helper methods that change behavior 
 ```rust
 impl InterfaceGenerator<'_> {
     // When feature is enabled, call the visitor
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     fn visitor_before_record(&mut self, ctx: &RecordContext) -> bool {
         if let Some(visitor) = self.gen.visitor.as_mut() {
             visitor.before_record(ctx) == BeforeAction::Skip
@@ -1233,19 +1233,19 @@ impl InterfaceGenerator<'_> {
     }
 
     // When feature is disabled, always return false (don't skip)
-    #[cfg(not(feature = "visitor"))]
+    #[cfg(not(feature = "annotation"))]
     fn visitor_before_record(&mut self, _ctx: &RecordContext) -> bool {
         false
     }
 
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     fn visitor_augment_record(&mut self, ctx: &RecordContext, contrib: &mut TypeContribution) {
         if let Some(visitor) = self.gen.visitor.as_mut() {
             visitor.augment_record(ctx, contrib);
         }
     }
 
-    #[cfg(not(feature = "visitor"))]
+    #[cfg(not(feature = "annotation"))]
     fn visitor_augment_record(&mut self, _ctx: &RecordContext, _contrib: &mut TypeContribution) {}
 }
 ```
@@ -1265,7 +1265,7 @@ fn print_typedef_record(&mut self, id: TypeId, record: &Record, docs: &Docs) {
     let type_name = self.type_name(id);
 
     // Create context only when feature is enabled
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     let ctx = RecordContext {
         record,
         type_id: id,
@@ -1278,21 +1278,21 @@ fn print_typedef_record(&mut self, id: TypeId, record: &Record, docs: &Docs) {
     };
 
     // Check before hook using helper method
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     if self.visitor_before_record(&ctx) {
         return;
     }
 
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     let mut contribution = TypeContribution::default();
 
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     self.visitor_augment_record(&ctx, &mut contribution);
 
     // ... existing generation code ...
 
     // Apply contributions
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     {
         for doc in &contribution.doc_comments {
             uwriteln!(self.src, "/// {doc}");
@@ -1310,11 +1310,11 @@ The implementation must be tested with both feature configurations:
 
 **In CI/CD:**
 ```bash
-# Test without visitor feature (default)
+# Test without annotation feature (default)
 cargo test
 
-# Test with visitor feature
-cargo test --features visitor
+# Test with annotation feature
+cargo test --features annotation
 
 # Test all features
 cargo test --all-features
@@ -1326,7 +1326,7 @@ cargo test --all-features
 cargo check --no-default-features
 
 # Check that code compiles with visitor
-cargo check --features visitor
+cargo check --features annotation
 ```
 
 ### Documentation Considerations
@@ -1336,7 +1336,7 @@ cargo check --features visitor
 3. **API docs should use `#[cfg_attr]`** to indicate feature requirement:
 
 ```rust
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]
 pub trait WitVisitor {
     // ...
 }
@@ -1358,9 +1358,9 @@ This section describes the major modifications needed in existing code to integr
 pub struct Opts {
     // ... existing fields ...
 
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     /// Optional visitor to customize code generation.
-    /// Only available when the "visitor" feature is enabled.
+    /// Only available when the "annotation" feature is enabled.
     pub visitor: Option<Box<dyn WitVisitor>>,
 }
 ```
@@ -1375,7 +1375,7 @@ pub struct Opts {
 struct RustWasm {
     // ... existing fields ...
 
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotation")]
     visitor: Option<Box<dyn WitVisitor>>,
 }
 
@@ -1384,7 +1384,7 @@ impl RustWasm {
         RustWasm {
             // ... existing initialization ...
 
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotation")]
             visitor: None,
         }
     }
@@ -1395,7 +1395,7 @@ impl Opts {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
 
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotation")]
         {
             r.visitor = self.visitor;
         }
@@ -1620,12 +1620,12 @@ Add hooks in appropriate locations:
 
 ## Usage Examples
 
-**Prerequisites:** All examples require enabling the `visitor` feature:
+**Prerequisites:** All examples require enabling the `annotation` feature:
 
 ```toml
 # In Cargo.toml
 [dependencies]
-wit-bindgen = { version = "0.47", features = ["visitor"] }
+wit-bindgen = { version = "0.47", features = ["annotation"] }
 ```
 
 ### Example 1: Add Serde Derives to All Types
@@ -1803,12 +1803,12 @@ Step-by-step plan for implementing the visitor system:
 ### Phase 1: Core Infrastructure (No Tests)
 
 1. **Add feature flag** (`crates/rust/Cargo.toml`)
-   - Add `visitor = []` to `[features]` section
+   - Add `annotation = []` to `[features]` section
    - Ensure it's not in the default features
 
 2. **Create visitor module** (`crates/rust/src/visitor.rs`)
    - Define `WitVisitor` trait with all methods
-   - Add `#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]` to public items
+   - Add `#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]` to public items
    - Define `BeforeAction` enum
    - Create submodules: `context`, `contribution`
 
@@ -1821,16 +1821,16 @@ Step-by-step plan for implementing the visitor system:
    - Implement builder methods
 
 5. **Add feature-gated visitor to Opts** (`crates/rust/src/lib.rs`)
-   - Add `#[cfg(feature = "visitor")]` module declaration
-   - Add `#[cfg(feature = "visitor")]` pub use statements
-   - Add `#[cfg(feature = "visitor")] visitor: Option<Box<dyn WitVisitor>>` field to Opts
+   - Add `#[cfg(feature = "annotation")]` module declaration
+   - Add `#[cfg(feature = "annotation")]` pub use statements
+   - Add `#[cfg(feature = "annotation")] visitor: Option<Box<dyn WitVisitor>>` field to Opts
    - Thread through to RustWasm with feature gates
 
 ### Phase 2: Integration
 
 6. **Create visitor helper methods** (`crates/rust/src/interface.rs`)
    - Add feature-gated helper methods to InterfaceGenerator (visitor_before_record, visitor_augment_record, etc.)
-   - Create both `#[cfg(feature = "visitor")]` and `#[cfg(not(feature = "visitor"))]` versions
+   - Create both `#[cfg(feature = "annotation")]` and `#[cfg(not(feature = "annotation"))]` versions
    - Follow the helper method pattern from the Feature Gating section
 
 7. **Add hooks to InterfaceGenerator for types** (`crates/rust/src/interface.rs`)
@@ -1853,14 +1853,14 @@ Step-by-step plan for implementing the visitor system:
 ### Phase 3: Testing and Documentation
 
 10. **Test feature configurations**
-    - Ensure code compiles without visitor feature: `cargo check --no-default-features`
-    - Ensure code compiles with visitor feature: `cargo check --features visitor`
+    - Ensure code compiles without annotation feature: `cargo check --no-default-features`
+    - Ensure code compiles with annotation feature: `cargo check --features annotation`
     - Run tests without feature: `cargo test`
-    - Run tests with feature: `cargo test --features visitor`
+    - Run tests with feature: `cargo test --features annotation`
     - Update CI to test both configurations
 
 11. **Add inline documentation**
-    - Document all trait methods with `#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]`
+    - Document all trait methods with `#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]`
     - Document all context types
     - Document contribution APIs
     - Add feature requirement notes to module-level docs
@@ -1878,7 +1878,7 @@ Step-by-step plan for implementing the visitor system:
 - **Mutability**: Visitor is `&mut self` to allow stateful visitors
 - **Error Handling**: Visitors should not panic; use Result types if needed
 - **Performance**: Visitor checks are guarded by `Option` and only run when present, plus feature gating ensures zero overhead when feature is disabled
-- **Feature Gating**: All visitor functionality is behind the `visitor` feature flag; use helper methods to keep code clean
+- **Feature Gating**: All visitor functionality is behind the `annotation` feature flag; use helper methods to keep code clean
 - **Testing**: Must test both with and without the feature enabled to ensure correctness
 - **Backward Compatibility**: All changes are additive; existing code unaffected
 
