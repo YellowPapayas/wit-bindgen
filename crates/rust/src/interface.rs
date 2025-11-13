@@ -176,6 +176,17 @@ impl<'i> InterfaceGenerator<'i> {
             self.generate_guest_export(func, interface.map(|(_, k)| k), &trait_name, async_);
 
             let prev = mem::take(&mut self.src);
+
+            // emit function attributes from visitors for trait methods
+            #[cfg(feature = "annotation")]
+            for visitor in &mut self.r#gen.visitors {
+                if let Some(contrib) = visitor.visit_function(func) {
+                    for attr in &contrib.attributes {
+                        uwriteln!(self.src, "{}", attr);
+                    }
+                }
+            }
+
             let mut sig = FnSig {
                 async_,
                 use_item_name: true,
@@ -744,11 +755,8 @@ pub mod vtable{ordinal} {{
             sig.use_item_name = true;
             sig.update_for_func(&func);
         }
-        self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
-        let params = self.print_signature(func, async_, &sig);
-        self.src.push_str("{\n");
 
-        // call visitors to get function body prefix contributions
+        // call visitors to get function contributions (attributes and body_prefix)
         #[cfg(feature = "annotation")]
         let mut func_contribs = Vec::new();
         #[cfg(feature = "annotation")]
@@ -757,6 +765,18 @@ pub mod vtable{ordinal} {{
                 func_contribs.push(contrib);
             }
         }
+
+        // emit function attributes from visitors
+        #[cfg(feature = "annotation")]
+        for contrib in &func_contribs {
+            for attr in &contrib.attributes {
+                uwriteln!(self.src, "{}", attr);
+            }
+        }
+
+        self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
+        let params = self.print_signature(func, async_, &sig);
+        self.src.push_str("{\n");
 
         // inject body_prefix code from all visitors in order
         #[cfg(feature = "annotation")]
