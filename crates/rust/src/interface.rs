@@ -2519,14 +2519,22 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         for (case_idx, case) in enum_.cases.iter().enumerate() {
             self.rustdoc(&case.docs);
 
-            // emit visitor-contributed case attributes
+            // collect visitor-contributed case attributes
             #[cfg(feature = "annotation")]
-            for visitor in &mut self.r#gen.visitors {
-                if let Some(contrib) = visitor.visit_enum_case(case, case_idx) {
-                    for attr in &contrib.attributes {
-                        self.push_str(&format!("{}\n", attr));
+            let case_attrs = {
+                let mut attrs = Vec::new();
+                for visitor in &mut self.r#gen.visitors {
+                    if let Some(contrib) = visitor.visit_enum_case(case, case_idx) {
+                        attrs.extend(contrib.attributes);
                     }
                 }
+                attrs
+            };
+
+            // emit visitor-contributed case attributes
+            #[cfg(feature = "annotation")]
+            for attr in &case_attrs {
+                self.push_str(&format!("{}\n", attr));
             }
 
             // apply existing case_attr callback
