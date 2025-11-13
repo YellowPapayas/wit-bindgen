@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(feature = "visitor")]
-use crate::annotation_visitor::{RustFieldContribution, RustTypeContribution, RustVariantCaseContribution};
+use crate::annotation_visitor::{RustFieldContribution, RustModuleContribution, RustTypeContribution, RustVariantCaseContribution};
 
 use anyhow::Result;
 use heck::*;
