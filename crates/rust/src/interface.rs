@@ -2522,7 +2522,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // emit visitor-contributed case attributes
             #[cfg(feature = "annotation")]
             for visitor in &mut self.r#gen.visitors {
-                if let Some(contrib) = visitor.visit_variant_case(case, case_idx) {
+                if let Some(contrib) = visitor.visit_enum_case(case, case_idx) {
                     for attr in &contrib.attributes {
                         self.push_str(&format!("{}\n", attr));
                     }

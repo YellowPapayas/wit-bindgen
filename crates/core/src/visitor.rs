@@ -67,9 +67,15 @@ pub trait Visitor {
         None
     }
 
-    /// Called for each case in a variant or enum.
+    /// Called for each case in a variant.
     /// Return `Some(contribution)` to add variant-case-level customizations.
     fn visit_variant_case(&mut self, _case: &Case, _case_index: usize) -> Option<Self::VariantCaseContribution> {
+        None
+    }
+
+    /// Called for each case in an enum.
+    /// Return `Some(contribution)` to add enum-case-level customizations.
+    fn visit_enum_case(&mut self, _case: &EnumCase, _case_index: usize) -> Option<Self::VariantCaseContribution> {
         None
     }
 
