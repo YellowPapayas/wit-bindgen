@@ -1090,6 +1090,24 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         let params = self.print_export_sig(func, async_);
         self.push_str(" { unsafe {");
 
+        // call visitors to get function body prefix contributions
+        #[cfg(feature = "visitor")]
+        let mut func_contribs = Vec::new();
+        #[cfg(feature = "visitor")]
+        for visitor in &mut self.r#gen.visitors {
+            if let Some(contrib) = visitor.visit_function(func) {
+                func_contribs.push(contrib);
+            }
+        }
+
+        // inject body_prefix code from all visitors in order
+        #[cfg(feature = "visitor")]
+        for contrib in &func_contribs {
+            for code_line in &contrib.body_prefix {
+                uwriteln!(self.src, "{}", code_line);
+            }
+        }
+
         if !self.r#gen.opts.disable_run_ctors_once_workaround {
             let run_ctors_once = self.path_to_run_ctors_once();
             // Before executing any other code, use this function to run all
