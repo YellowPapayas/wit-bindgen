@@ -4,6 +4,7 @@ use core::panic;
 use heck::*;
 use indexmap::{IndexMap, IndexSet};
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::hash_map::Entry;
 use std::fmt::{self, Write as _};
 use std::mem;
 use std::str::FromStr;
@@ -60,7 +61,7 @@ struct RustWasm {
     stream_payloads: IndexMap<String, String>,
 
     #[cfg(feature = "visitor")]
-    visitors: Vec<Box<dyn RustVisitor>>,
+    visitor_map: HashMap<String, Box<dyn RustVisitor>>,
 }
 
 #[derive(Default)]
@@ -286,6 +287,7 @@ pub struct Opts {
 
     #[cfg(feature = "visitor")]
     #[cfg_attr(feature = "serde", serde(skip))]
+    #[cfg_attr(feature = "clap", clap(skip))]
     pub visitors: Vec<Box<dyn RustVisitor>>,
 }
 
@@ -296,7 +298,15 @@ impl Opts {
 
         #[cfg(feature = "visitor")]
         {
-            r.visitors = mem::take(&mut self.visitors);
+            let mut visitor_map = HashMap::new();
+        
+            for visitor in mem::take(&mut self.visitors) {
+                match visitor_map.entry(visitor.target().to_string()) {
+                    Entry::Occupied(_) => panic!("Cannot accept two visitors with the same target of {}", visitor.target().to_string()),
+                    Entry::Vacant(vacant_entry) => vacant_entry.insert(visitor),
+                };
+            }
+            r.visitor_map = visitor_map;
         }
 
         r.opts = self;
