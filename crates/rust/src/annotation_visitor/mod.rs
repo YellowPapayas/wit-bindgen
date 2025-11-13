@@ -13,7 +13,7 @@ pub trait RustVisitor: Visitor<
     VariantCaseContribution = RustVariantCaseContribution,
     FunctionContribution = RustFunctionContribution,
     ModuleContribution = RustModuleContribution,
-> {}
+> + Send + Sync {}
 
 // any type that implements Visitor with the right associated types automatically implements RustVisitor
 impl<T> RustVisitor for T where T: Visitor<
@@ -22,5 +22,5 @@ impl<T> RustVisitor for T where T: Visitor<
     VariantCaseContribution = RustVariantCaseContribution,
     FunctionContribution = RustFunctionContribution,
     ModuleContribution = RustModuleContribution,
-    >
+    > + Send + Sync
 {}

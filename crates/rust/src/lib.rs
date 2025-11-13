@@ -247,7 +247,7 @@ pub struct Opts {
     #[cfg_attr(feature = "clap", arg(long))]
     pub generate_all: bool,
 
-    /// Add the specified suffix to the name of the custome section containing
+    /// Add the specified suffix to the name of the custom section containing
     /// the component type.
     #[cfg_attr(feature = "clap", arg(long, value_name = "STRING"))]
     pub type_section_suffix: Option<String>,
@@ -565,7 +565,7 @@ pub unsafe fn cabi_dealloc(ptr: *mut u8, size: usize, align: usize) {
                     "\
 pub unsafe fn string_lift(bytes: Vec<u8>) -> String {
     if cfg!(debug_assertions) {
-        String::from_utf8(bytes).unwrap()
+        String::from_utf8(bytes).expect(\"invalid utf-8 sequence\")
     } else {
         unsafe { String::from_utf8_unchecked(bytes) }
     }
@@ -593,7 +593,7 @@ pub unsafe fn invalid_enum_discriminant<T>() -> T {
                     "\
 pub unsafe fn char_lift(val: u32) -> char {
     if cfg!(debug_assertions) {
-        core::char::from_u32(val).unwrap()
+        core::char::from_u32(val).expect(\"invalid character code point\")
     } else {
         unsafe { core::char::from_u32_unchecked(val) }
     }
@@ -906,7 +906,7 @@ macro_rules! __export_{world_name}_impl {{
         let opts_suffix = self.opts.type_section_suffix.as_deref().unwrap_or("");
         let world = &resolve.worlds[world_id];
         let world_name = &world.name;
-        let pkg = &resolve.packages[world.package.unwrap()].name;
+        let pkg = &resolve.packages[world.package.expect("world must have a package")].name;
         let version = env!("CARGO_PKG_VERSION");
         self.src.push_str(&format!(
             "#[unsafe(link_section = \"component-type:wit-bindgen:{version}:\
@@ -926,7 +926,7 @@ macro_rules! __export_{world_name}_impl {{
             wit_component::StringEncoding::UTF8,
             Some(&producers),
         )
-        .unwrap();
+        .expect("failed to encode component metadata");
 
         self.src.push_str("#[doc(hidden)]\n");
         self.src.push_str("#[allow(clippy::octal_escapes)]\n");
@@ -1401,7 +1401,8 @@ impl WorldGenerator for RustWasm {
 
         let mut src = mem::take(&mut self.src);
         if self.opts.format {
-            let syntax_tree = syn::parse_file(src.as_str()).unwrap();
+            let syntax_tree = syn::parse_file(src.as_str())
+                .expect("generated Rust code must be valid syntax");
             *src.as_mut_string() = prettyplease::unparse(&syntax_tree);
         }
 
