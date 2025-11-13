@@ -2516,8 +2516,18 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str(&format!("pub enum {name} {{\n"));
 
         // enumerate cases
-        for (_case_idx, case) in enum_.cases.iter().enumerate() {
+        for (case_idx, case) in enum_.cases.iter().enumerate() {
             self.rustdoc(&case.docs);
+
+            // emit visitor-contributed case attributes
+            #[cfg(feature = "annotation")]
+            for visitor in &mut self.r#gen.visitors {
+                if let Some(contrib) = visitor.visit_variant_case(case, case_idx) {
+                    for attr in &contrib.attributes {
+                        self.push_str(&format!("{}\n", attr));
+                    }
+                }
+            }
 
             // apply existing case_attr callback
             self.push_str(&case_attr(case));
