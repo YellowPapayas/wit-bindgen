@@ -7,7 +7,7 @@
 /// Contributions for type definitions (records, variants, enums, flags, resources).
 ///
 /// This type is passed as a mutable reference to visitor methods.
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustTypeContribution {
     /// Derive macros to add (e.g., "Clone", "Debug", "serde::Serialize")
@@ -39,7 +39,7 @@ impl RustTypeContribution {
 }
 
 /// Contributions for field definitions within records.
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustFieldContribution {
     /// Field-level attributes (e.g., "#[serde(rename = \"foo\")]")
@@ -63,7 +63,7 @@ impl RustFieldContribution {
 }
 
 /// Contributions for variant/enum cases.
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustVariantCaseContribution {
     /// Case-level attributes (e.g., "#[serde(rename = \"foo\")]")
@@ -87,7 +87,7 @@ impl RustVariantCaseContribution {
 }
 
 /// Contributions for function definitions.
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustFunctionContribution {
     /// Function-level attributes (e.g., "#[inline]", "#[must_use]")
@@ -121,7 +121,7 @@ impl RustFunctionContribution {
 }
 
 /// Contributions for module-level code.
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotation")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustModuleContribution {
     /// Use statements to add
