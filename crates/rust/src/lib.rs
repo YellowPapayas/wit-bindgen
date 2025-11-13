@@ -20,7 +20,7 @@ mod interface;
 pub mod annotation_visitor;
 
 #[cfg(feature = "visitor")]
-pub use annotation_visitor::RustVisitor;
+pub use annotation_visitor::{RustModuleContribution, RustVisitor};
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
@@ -290,7 +290,9 @@ pub struct Opts {
 }
 
 impl Opts {
-    pub fn build(#[cfg_attr(not(feature = "visitor"), allow(unused_mut))] mut self) -> Box<dyn WorldGenerator> {
+    pub fn build(
+        #[cfg_attr(not(feature = "visitor"), allow(unused_mut))] mut self,
+    ) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
 
@@ -1305,8 +1307,12 @@ impl WorldGenerator for RustWasm {
             let mut visitor_contribution = RustModuleContribution::new();
             for visitor in &mut self.visitors {
                 if let Some(contrib) = visitor.visit_world(world_obj) {
-                    visitor_contribution.use_statements.extend(contrib.use_statements);
-                    visitor_contribution.additional_code.extend(contrib.additional_code);
+                    visitor_contribution
+                        .use_statements
+                        .extend(contrib.use_statements);
+                    visitor_contribution
+                        .additional_code
+                        .extend(contrib.additional_code);
                 }
             }
 

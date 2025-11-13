@@ -6,7 +6,10 @@ use crate::{
 };
 
 #[cfg(feature = "visitor")]
-use crate::annotation_visitor::{RustFieldContribution, RustTypeContribution, RustVariantCaseContribution};
+use crate::annotation_visitor::{
+    RustFieldContribution, RustModuleContribution, RustTypeContribution,
+    RustVariantCaseContribution,
+};
 
 use anyhow::Result;
 use heck::*;
@@ -456,8 +459,12 @@ macro_rules! {macro_name} {{
             let mut visitor_contribution = RustModuleContribution::new();
             for visitor in &mut self.r#gen.visitors {
                 if let Some(contrib) = visitor.visit_interface(interface_obj) {
-                    visitor_contribution.use_statements.extend(contrib.use_statements);
-                    visitor_contribution.additional_code.extend(contrib.additional_code);
+                    visitor_contribution
+                        .use_statements
+                        .extend(contrib.use_statements);
+                    visitor_contribution
+                        .additional_code
+                        .extend(contrib.additional_code);
                 }
             }
 
@@ -2181,7 +2188,12 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         );
     }
 
-    fn print_rust_enum<'b>(&mut self, id: TypeId, cases: impl IntoIterator<Item =(String, &'b Docs, Option<&'b Type>)> + Clone, docs: &Docs, _variant: Option<&Variant>
+    fn print_rust_enum<'b>(
+        &mut self,
+        id: TypeId,
+        cases: impl IntoIterator<Item = (String, &'b Docs, Option<&'b Type>)> + Clone,
+        docs: &Docs,
+        _variant: Option<&Variant>,
     ) where
         Self: Sized,
     {
@@ -2253,13 +2265,15 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
                 self.push_str(")]\n");
             }
-            
+
             // emit derives and enum declaration
             self.push_str(&format!("pub enum {name}"));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
 
-            for (_case_idx, (case_name, case_docs, payload)) in cases.clone().into_iter().enumerate() {
+            for (_case_idx, (case_name, case_docs, payload)) in
+                cases.clone().into_iter().enumerate()
+            {
                 // Variant-case-level visitor customization:
                 // Called for each individual enum variant to allow per-variant attributes.
                 // This enables customization like #[serde(rename = "...")] on specific variants,
@@ -2271,7 +2285,9 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 #[cfg(feature = "visitor")]
                 if let Some(v) = _variant {
                     for visitor in &mut self.r#gen.visitors {
-                        if let Some(contrib) = visitor.visit_variant_case(&v.cases[_case_idx], _case_idx) {
+                        if let Some(contrib) =
+                            visitor.visit_variant_case(&v.cases[_case_idx], _case_idx)
+                        {
                             case_contrib.attributes.extend(contrib.attributes);
                         }
                     }
@@ -3100,7 +3116,14 @@ impl<'a> {camel}Borrow<'a>{{
         // Build derive list with visitor contributions
         #[cfg_attr(not(feature = "visitor"), allow(unused_mut))]
         let mut derives = vec![
-            "PartialEq", "Eq", "PartialOrd", "Ord", "Hash", "Debug", "Clone", "Copy"
+            "PartialEq",
+            "Eq",
+            "PartialOrd",
+            "Ord",
+            "Hash",
+            "Debug",
+            "Clone",
+            "Copy",
         ];
 
         #[cfg(feature = "visitor")]
