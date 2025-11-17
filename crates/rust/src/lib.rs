@@ -21,7 +21,7 @@ mod interface;
 pub mod annotation_visitor;
 
 #[cfg(feature = "visitor")]
-pub use annotation_visitor::RustVisitor;
+pub use annotation_visitor::{RustModuleContribution, RustVisitor};
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
@@ -292,7 +292,9 @@ pub struct Opts {
 }
 
 impl Opts {
-    pub fn build(#[cfg_attr(not(feature = "visitor"), allow(unused_mut))] mut self) -> Box<dyn WorldGenerator> {
+    pub fn build(
+        #[cfg_attr(not(feature = "visitor"), allow(unused_mut))] mut self,
+    ) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
 
@@ -1305,6 +1307,33 @@ impl WorldGenerator for RustWasm {
 
     fn finish(&mut self, resolve: &Resolve, world: WorldId, files: &mut Files) -> Result<()> {
         let name = &resolve.worlds[world].name;
+
+        // Visitor pattern for world-level customization:
+        // If the visitor feature is enabled and any visitors are registered, call each to get
+        // custom world-level contributions (use statements, additional code, etc.).
+        #[cfg(feature = "visitor")]
+        {
+            let world_obj = &resolve.worlds[world];
+            let mut visitor_contribution = RustModuleContribution::new();
+            for visitor in &mut self.visitors {
+                if let Some(contrib) = visitor.visit_world(world_obj) {
+                    visitor_contribution
+                        .use_statements
+                        .extend(contrib.use_statements);
+                    visitor_contribution
+                        .additional_code
+                        .extend(contrib.additional_code);
+                }
+            }
+
+            // Apply visitor contributions to the world source
+            for use_stmt in &visitor_contribution.use_statements {
+                self.src.push_str(&format!("{}\n", use_stmt));
+            }
+            for code in &visitor_contribution.additional_code {
+                self.src.push_str(&format!("{}\n", code));
+            }
+        }
 
         let imports = mem::take(&mut self.import_modules);
         self.emit_modules(imports);
