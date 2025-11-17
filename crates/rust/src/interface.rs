@@ -6,10 +6,12 @@ use crate::{
 };
 
 #[cfg(feature = "visitor")]
-use crate::annotation_visitor::{RustFieldContribution, RustTypeContribution, RustVariantCaseContribution};
+use crate::annotation_visitor::{RustFieldContribution, RustFunctionContribution, RustTypeContribution, RustVariantCaseContribution};
 
 use anyhow::Result;
 use heck::*;
+#[cfg(feature = "visitor")]
+use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::mem;
@@ -149,6 +151,26 @@ impl<'i> InterfaceGenerator<'i> {
 
         traits.insert(None, ("Guest".to_string(), Vec::new()));
 
+        // Collect function contributions from visitors
+        #[cfg(feature = "visitor")]
+        let mut func_contributions: HashMap<String, Vec<RustFunctionContribution>> = HashMap::new();
+
+        #[cfg(feature = "visitor")]
+        if let Some((id, _)) = interface {
+            for (func_name, func) in &self.resolve.interfaces[id].functions {
+                let mut contributions = vec![];
+                for (target, value) in func.annotations.iter() {
+                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                        if let Some(contrib) = visitor.visit_function(value, func) {
+                            contributions.push(contrib);
+                        }
+                        
+                    }
+                }
+                func_contributions.insert(func_name.clone(), contributions);
+            }
+        }
+        
         if let Some((id, _)) = interface {
             for (name, id) in self.resolve.interfaces[id].types.iter() {
                 match self.resolve.types[*id].kind {
@@ -173,7 +195,18 @@ impl<'i> InterfaceGenerator<'i> {
 
             funcs_to_export.push((func, resource, async_));
             let (trait_name, methods) = traits.get_mut(&resource).unwrap();
-            self.generate_guest_export(func, interface.map(|(_, k)| k), &trait_name, async_);
+
+            #[cfg(feature = "visitor")]
+            let contributions = func_contributions.get(&func.name).map(|v| v.as_slice()).unwrap_or(&[]);
+
+            self.generate_guest_export(
+                func,
+                interface.map(|(_, k)| k),
+                &trait_name,
+                async_,
+                #[cfg(feature = "visitor")]
+                contributions,
+            );
 
             let prev = mem::take(&mut self.src);
             let mut sig = FnSig {
@@ -183,6 +216,18 @@ impl<'i> InterfaceGenerator<'i> {
                 ..Default::default()
             };
             sig.update_for_func(&func);
+
+            // Emit visitor-contributed attributes for trait method
+            #[cfg(feature = "visitor")]
+            if let Some(contribs) = func_contributions.get(&func.name) {
+                for contrib in contribs {
+                    for attr in &contrib.attributes {
+                        self.src.push_str(attr);
+                        self.src.push_str("\n");
+                    }
+                }
+            }
+
             self.print_signature(func, true, &sig);
             self.src.push_str(";\n");
             let trait_method = mem::replace(&mut self.src, prev);
@@ -1042,10 +1087,21 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         interface: Option<&WorldKey>,
         trait_name: &str,
         async_: bool,
+        #[cfg(feature = "visitor")]
+        func_contributions: &[RustFunctionContribution],
     ) {
         let name_snake = func.name.to_snake_case().replace('.', "_");
 
         self.generate_payloads("[export]", func, interface);
+
+        // Emit visitor-contributed attributes
+        #[cfg(feature = "visitor")]
+        for contrib in func_contributions {
+            for attr in &contrib.attributes {
+                self.src.push_str(attr);
+                self.src.push_str("\n");
+            }
+        }
 
         uwrite!(
             self.src,
@@ -1072,6 +1128,15 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 self.src,
                 "#[cfg(target_arch=\"wasm32\")]\n{run_ctors_once}();",
             );
+        }
+
+        // Emit visitor-contributed body prefix code
+        #[cfg(feature = "visitor")]
+        for contrib in func_contributions {
+            for code in &contrib.body_prefix {
+                self.src.push_str(code);
+                self.src.push_str("\n");
+            }
         }
 
         let mut f = FunctionBindgen::new(self, params, self.wasm_import_module, false);
@@ -2369,6 +2434,20 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str("#[repr(");
         self.int_repr(enum_.tag());
         self.push_str(")]\n");
+        
+        
+        #[cfg(feature = "visitor")]
+        let mut enum_contributions: Vec<RustTypeContribution> = vec![];
+        
+        #[cfg(feature = "visitor")]
+        for (annotation_target, annotation_value) in self.resolve.types[id].annotations.iter() {
+            if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
+                if let Some(contribution) = visitor.visit_enum(annotation_value, enum_, id) {
+                    enum_contributions.push(contribution);
+                }
+            }
+            // TODO: maybe add a warning when there is no match for an annotation
+        }
 
         // We use a BTree set to make sure we don't have any duplicates and a stable order
         let mut derives: BTreeSet<String> = BTreeSet::new();
@@ -2379,6 +2458,13 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .contains(&name.to_kebab_case())
         {
             derives.extend(self.r#gen.opts.additional_derive_attributes.to_vec());
+        }
+        
+        #[cfg(feature = "visitor")]
+        for contrib in enum_contributions.iter() {
+            for derive in contrib.derives.iter() {
+                derives.insert(derive.clone());
+            }
         }
 
         derives.extend(
@@ -2393,6 +2479,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
 
         // enumerate cases
         for (_case_idx, case) in enum_.cases.iter().enumerate() {
+            // TODO perhaps add parsing the annotations from enum cases (are we allowing that in WIT?)
             self.rustdoc(&case.docs);
 
             // apply existing case_attr callback
@@ -2948,6 +3035,7 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_flags(&mut self, _id: TypeId, name: &str, flags: &Flags, docs: &Docs) {
+        // TODO flags might be more difficult to implement the visitor for
         self.src.push_str(&format!(
             "{bitflags}::bitflags! {{\n",
             bitflags = self.r#gen.bitflags_path()
