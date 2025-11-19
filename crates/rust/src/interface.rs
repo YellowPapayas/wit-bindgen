@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[cfg(feature = "visitor")]
-use crate::annotation_visitor::{RustFieldContribution, RustFunctionContribution, RustTypeContribution, RustVariantCaseContribution};
+use crate::annotation_visitor::{RustFieldContribution, RustFunctionContribution, RustModuleContribution, RustTypeContribution, RustVariantCaseContribution};
 
 use anyhow::Result;
 use heck::*;
@@ -401,11 +401,40 @@ macro_rules! {macro_name} {{
 
     pub fn generate_imports<'a>(
         &mut self,
-        funcs: impl Iterator<Item = &'a Function>,
+        funcs: impl Iterator<Item = &'a Function> + Clone,
         interface: Option<&WorldKey>,
     ) {
+        // Collect function contributions from visitors
+        #[cfg(feature = "visitor")]
+        let mut func_contributions: HashMap<String, Vec<RustFunctionContribution>> = HashMap::new();
+
+        #[cfg(feature = "visitor")]
+        if let Some(key) = interface {
+            if let WorldKey::Interface(id) = key {
+                for (func_name, func) in &self.resolve.interfaces[*id].functions {
+                    let mut contributions = vec![];
+                    for (target, value) in func.annotations.iter() {
+                        if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                            if let Some(contrib) = visitor.visit_function(value, func) {
+                                contributions.push(contrib);
+                            }
+                        }
+                    }
+                    func_contributions.insert(func_name.clone(), contributions);
+                }
+            }
+        }
+
         for func in funcs {
-            self.generate_guest_import(func, interface);
+            #[cfg(feature = "visitor")]
+            let contributions = func_contributions.get(&func.name).map(|v| v.as_slice()).unwrap_or(&[]);
+
+            self.generate_guest_import(
+                func,
+                interface,
+                #[cfg(feature = "visitor")]
+                contributions,
+            );
         }
     }
 
@@ -485,7 +514,57 @@ macro_rules! {macro_name} {{
     }
 
     pub fn finish_append_submodule(mut self, snake: &str, module_path: Vec<String>, docs: &Docs) {
-        let module = self.finish();
+        #[cfg_attr(not(feature = "visitor"), allow(unused_mut))]
+        let mut module = self.finish();
+
+        // Apply visitor contributions to the module if any are registered
+        #[cfg(feature = "visitor")]
+        {
+            // Extract the current interface being generated, if we're in an interface context
+            let interface_obj = match self.identifier {
+            Identifier::Interface(id, _) => Some(&self.resolve.interfaces[id]),
+            _ => None,
+            };
+
+            if let Some(interface) = interface_obj {
+            // Create a container to accumulate all visitor contributions for this module
+            let mut visitor_contribution = RustModuleContribution::new();
+            
+            // Iterate through all annotations attached to this interface
+            // (Annotations are key-value pairs where the key identifies which visitor should handle it)
+            for (target, value) in interface.annotations.iter() {
+                // Look up the visitor registered for this annotation target
+                if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                // Let the visitor inspect the interface and generate code contributions
+                if let Some(contrib) = visitor.visit_interface(value, Some(interface)) {
+                    // Merge this visitor's use statements into our accumulated set
+                    visitor_contribution
+                    .use_statements
+                    .extend(contrib.use_statements);
+                    // Merge this visitor's additional code into our accumulated set
+                    visitor_contribution
+                    .additional_code
+                    .extend(contrib.additional_code);
+                }
+                }
+            }
+
+                // Apply visitor contributions to module (need to merge their contributions into the module string)
+                let mut contributions = String::new();
+                // Add all use statements first
+                for use_stmt in &visitor_contribution.use_statements {
+                    contributions.push_str(&format!("{}\n", use_stmt));
+                }
+                // Add any additional code blocks (functions, impls, etc.) after the use statements
+                for code in &visitor_contribution.additional_code {
+                    contributions.push_str(&format!("{}\n", code));
+                }
+                // If visitors contributed anything, prepend it to the module content (ensures visitor code appears first)
+                if !contributions.is_empty() {
+                    module = format!("{}\n{}", contributions, module);
+                }
+            }
+        }
 
         self.rustdoc(docs);
         let docs = mem::take(&mut self.src).to_string();
@@ -734,7 +813,13 @@ pub mod vtable{ordinal} {{
         map.insert(name, code);
     }
 
-    fn generate_guest_import(&mut self, func: &Function, interface: Option<&WorldKey>) {
+    fn generate_guest_import(
+        &mut self,
+        func: &Function,
+        interface: Option<&WorldKey>,
+        #[cfg(feature = "visitor")]
+        func_contributions: &[RustFunctionContribution],
+    ) {
         if self.r#gen.skip.contains(&func.name) {
             return;
         }
@@ -753,9 +838,28 @@ pub mod vtable{ordinal} {{
             sig.use_item_name = true;
             sig.update_for_func(&func);
         }
+
+        // Emit visitor-contributed attributes
+        #[cfg(feature = "visitor")]
+        for contrib in func_contributions {
+            for attr in &contrib.attributes {
+                self.src.push_str(attr);
+                self.src.push_str("\n");
+            }
+        }
+
         self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
         let params = self.print_signature(func, async_, &sig);
         self.src.push_str("{\n");
+
+        // Emit visitor-contributed body prefix code
+        #[cfg(feature = "visitor")]
+        for contrib in func_contributions {
+            for code in &contrib.body_prefix {
+                uwriteln!(self.src, "    {}", code);
+            }
+        }
+
         self.src.push_str("unsafe {\n");
 
         if async_ {
@@ -2477,10 +2581,28 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str(")]\n");
         self.push_str(&format!("pub enum {name} {{\n"));
 
-        // enumerate cases
-        for (_case_idx, case) in enum_.cases.iter().enumerate() {
-            // TODO perhaps add parsing the annotations from enum cases (are we allowing that in WIT?)
+        // Enumerate cases
+        for (case_idx, case) in enum_.cases.iter().enumerate() {
             self.rustdoc(&case.docs);
+
+            // Emit visitor-contributed case attributes for enum cases
+            #[cfg(feature = "visitor")]
+            for (target, value) in case.annotations.iter() {
+            if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                // Create a Case from EnumCase for the visitor
+                let variant_case = Case {
+                name: case.name.clone(),
+                docs: case.docs.clone(),
+                ty: None,
+                annotations: case.annotations.clone(),
+                };
+                if let Some(contrib) = visitor.visit_variant_case(value, &variant_case, case_idx) {
+                for attr in &contrib.attributes {
+                    self.push_str(&format!("{}\n", attr));
+                }
+                }
+            }
+            }
 
             // apply existing case_attr callback
             self.push_str(&case_attr(case));

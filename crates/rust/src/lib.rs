@@ -245,7 +245,7 @@ pub struct Opts {
     #[cfg_attr(feature = "clap", arg(long))]
     pub generate_all: bool,
 
-    /// Add the specified suffix to the name of the custome section containing
+    /// Add the specified suffix to the name of the custom section containing
     /// the component type.
     #[cfg_attr(feature = "clap", arg(long, value_name = "STRING"))]
     pub type_section_suffix: Option<String>,

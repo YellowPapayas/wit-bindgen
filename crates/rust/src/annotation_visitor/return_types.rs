@@ -1,19 +1,11 @@
-//! Contribution types for WIT visitor pattern
-//!
-//! These types are used with the core::Visitor trait to customize
-//! generated Rust code. They are passed as mutable references to
-//! visitor methods.
-
-/// Contributions for type definitions (records, variants, enums, flags, resources).
-///
-/// This type is passed as a mutable reference to visitor methods.
+/// Contributions for type definitions (passed as a mutable reference to visitor methods)
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustTypeContribution {
-    /// Derive macros to add (e.g., "Clone", "Debug", "serde::Serialize")
+    /// Derive macros to add
     pub derives: Vec<String>,
 
-    /// Attributes to add (e.g., "#[serde(rename_all = \"camelCase\")]")
+    /// Attributes to add
     pub attributes: Vec<String>,
 }
 
@@ -38,11 +30,11 @@ impl RustTypeContribution {
     }
 }
 
-/// Contributions for field definitions within records.
+/// Contributions for field definitions within records
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustFieldContribution {
-    /// Field-level attributes (e.g., "#[serde(rename = \"foo\")]")
+    /// Field-level attributes
     pub attributes: Vec<String>,
 }
 
@@ -62,11 +54,11 @@ impl RustFieldContribution {
     }
 }
 
-/// Contributions for variant/enum cases.
+/// Contributions for variant/enum cases
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustVariantCaseContribution {
-    /// Case-level attributes (e.g., "#[serde(rename = \"foo\")]")
+    /// Case-level attributes
     pub attributes: Vec<String>,
 }
 
@@ -86,11 +78,11 @@ impl RustVariantCaseContribution {
     }
 }
 
-/// Contributions for function definitions.
+/// Contributions for function definitions
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustFunctionContribution {
-    /// Function-level attributes (e.g., "#[inline]", "#[must_use]")
+    /// Function-level attributes
     pub attributes: Vec<String>,
 
     /// Code to prepend to function body
@@ -120,7 +112,7 @@ impl RustFunctionContribution {
     }
 }
 
-/// Contributions for module-level code.
+/// Contributions for module-level code
 #[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustModuleContribution {

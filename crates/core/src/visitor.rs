@@ -70,7 +70,7 @@ pub trait Visitor {
         None
     }
 
-    fn visit_world(&mut self, _nnotation: &String, _world: &World) -> Option<Self::ModuleContribution> {
+    fn visit_world(&mut self, _annotation: &String, _world: &World) -> Option<Self::ModuleContribution> {
         None
     }
 }
