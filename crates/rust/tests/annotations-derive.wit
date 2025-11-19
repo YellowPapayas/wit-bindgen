@@ -7,7 +7,7 @@ package test:annotations-derive;
 //     - #zero_copy, #rate_limit, #log_params for optimization and logging
 
 interface validation-examples {
-  #derive(Debug, Clone)]
+  #derive(Debug, Clone)
   #validate_utf8
   record sanitized-input {
     #non_empty
@@ -19,7 +19,7 @@ interface validation-examples {
     age: u8,
   }
 
-  #derive(Debug, Copy, Clone)]
+  #derive(Debug, Copy, Clone)
   #repr(C)
   #align(16)
   record vector3 {
@@ -31,7 +31,7 @@ interface validation-examples {
     z: f32,
   }
 
-  #derive(Debug)]
+  #derive(Debug)
   flags feature-flags {
     #experimental
     ai-mode,
