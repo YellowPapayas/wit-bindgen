@@ -21,6 +21,8 @@ pub(super) struct FunctionBindgen<'a, 'b> {
     pub import_return_pointer_area_align: Alignment,
     pub handle_decls: Vec<String>,
     always_owned: bool,
+    #[cfg(feature = "visitor")]
+    func_contributions: &'b [crate::annotation_visitor::RustFunctionContribution],
 }
 
 pub const POINTER_SIZE_EXPRESSION: &str = "::core::mem::size_of::<*const u8>()";
@@ -31,6 +33,8 @@ impl<'a, 'b> FunctionBindgen<'a, 'b> {
         params: Vec<String>,
         wasm_import_module: &'b str,
         always_owned: bool,
+        #[cfg(feature = "visitor")]
+        func_contributions: &'b [crate::annotation_visitor::RustFunctionContribution],
     ) -> FunctionBindgen<'a, 'b> {
         FunctionBindgen {
             r#gen,
@@ -45,6 +49,8 @@ impl<'a, 'b> FunctionBindgen<'a, 'b> {
             import_return_pointer_area_align: Default::default(),
             handle_decls: Vec::new(),
             always_owned,
+            #[cfg(feature = "visitor")]
+            func_contributions,
         }
     }
 
@@ -866,6 +872,16 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                     self.src.push_str(&decl);
                 }
                 self.push_str(&prev_src);
+
+                // Emit visitor-contributed body prefix code (after lifting, before trait call)
+                #[cfg(feature = "visitor")]
+                for contrib in self.func_contributions {
+                    for code in &contrib.body_prefix {
+                        self.src.push_str(code);
+                        self.src.push_str("\n");
+                    }
+                }
+
                 let constructor_type = match &func.kind {
                     FunctionKind::Freestanding | FunctionKind::AsyncFreestanding => {
                         self.push_str(&format!("T::{}", to_rust_ident(func.item_name())));
