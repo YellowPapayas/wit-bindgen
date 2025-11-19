@@ -21,7 +21,7 @@ mod interface;
 pub mod annotation_visitor;
 
 #[cfg(feature = "visitor")]
-pub use annotation_visitor::RustVisitor;
+pub use annotation_visitor::{RustVisitor};
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`

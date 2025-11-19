@@ -1,7 +1,7 @@
-mod return_types;
+mod contribution_types;
 use wit_bindgen_core::Visitor;
 
-pub use return_types::{
+pub use contribution_types::{
     RustFieldContribution, RustFunctionContribution, RustModuleContribution, RustTypeContribution,
     RustVariantCaseContribution,
 };
@@ -24,3 +24,14 @@ impl<T> RustVisitor for T where T: Visitor<
     ModuleContribution = RustModuleContribution,
     >
 {}
+
+#[macro_export]
+macro_rules! rust_visitor {
+    () => {
+        type TypeContribution = RustTypeContribution;
+        type FieldContribution = RustFieldContribution;
+        type VariantCaseContribution = RustVariantCaseContribution;
+        type FunctionContribution = RustFunctionContribution;
+        type ModuleContribution = RustModuleContribution;
+    };
+}
