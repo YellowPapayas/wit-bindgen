@@ -87,7 +87,6 @@ pub struct RustFunctionContribution {
 
     /// Code to prepend to function body
     pub body_prefix: Vec<String>,
-    
     // TODO: Code to append to function body (body_postfix)
 }
 
