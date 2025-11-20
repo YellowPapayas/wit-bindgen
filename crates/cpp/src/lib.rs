@@ -1781,6 +1781,7 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for CppInterfaceGenerator<'a> 
                     result: None,
                     docs: Docs::default(),
                     stability: Stability::Unknown,
+                    annotations: Default::default(),
                 };
                 self.generate_function(&func, &TypeOwner::Interface(intf), variant);
             }
@@ -1799,7 +1800,6 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for CppInterfaceGenerator<'a> 
                     if matches!(func.kind, FunctionKind::Constructor(_))
                         && matches!(variant, AbiVariant::GuestExport)
                     {
-                        // functional safety requires the option to use a different allocator, so move new into the implementation
                         let func2 = Function {
                             name: "$alloc".to_string(),
                             kind: FunctionKind::Static(id),
@@ -1808,6 +1808,7 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for CppInterfaceGenerator<'a> 
                             result: Some(Type::Id(id)),
                             docs: Docs::default(),
                             stability: Stability::Unknown,
+                            annotations: Default::default(),
                         };
                         self.generate_function(&func2, &TypeOwner::Interface(intf), variant);
                     }
@@ -1837,6 +1838,7 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for CppInterfaceGenerator<'a> 
                     result: Some(id_type),
                     docs: Docs::default(),
                     stability: Stability::Unknown,
+                    annotations: Default::default(),
                 };
                 self.generate_function(&func, &TypeOwner::Interface(intf), variant);
 
@@ -1847,6 +1849,7 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for CppInterfaceGenerator<'a> 
                     result: Some(Type::Id(id)),
                     docs: Docs::default(),
                     stability: Stability::Unknown,
+                    annotations: Default::default(),
                 };
                 self.generate_function(&func1, &TypeOwner::Interface(intf), variant);
 
@@ -1857,6 +1860,7 @@ impl<'a> wit_bindgen_core::InterfaceGenerator<'a> for CppInterfaceGenerator<'a> 
                     result: None,
                     docs: Docs::default(),
                     stability: Stability::Unknown,
+                    annotations: Default::default(),
                 };
                 self.generate_function(&func2, &TypeOwner::Interface(intf), variant);
             }
