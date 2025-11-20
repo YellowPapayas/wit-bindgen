@@ -876,30 +876,18 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                 // Bind lifted operands to variables with WIT parameter names
                 // so body_prefix can access them with proper types
                 #[cfg(feature = "visitor")]
-                let operand_vars = if !self.func_contributions.is_empty() {
-                    operands
-                        .iter()
-                        .enumerate()
-                        .map(|(i, operand)| {
-                            let param_name = if i < func.params.len() {
-                                to_rust_ident(&func.params[i].0)
-                            } else {
-                                format!("_arg{}", i)
-                            };
-                            // Only bind if operand is not already a simple variable
-                            if operand.chars().all(|c| c.is_alphanumeric() || c == '_') {
-                                // Already a variable, no need to rebind
-                                operand.clone()
-                            } else {
-                                // Bind the expression to a variable
-                                uwriteln!(self.src, "let {} = {};", param_name, operand);
-                                param_name
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                } else {
-                    Vec::new()
-                };
+                let operand_vars: Vec<String> = operands
+                    .iter()
+                    .enumerate()
+                    .map(|(i, operand)| {
+                        // CallInterface always has exactly func.params.len() operands
+                        let param_name = to_rust_ident(&func.params[i].0);
+
+                        // Always bind to WIT parameter name for predictable access in body_prefix
+                        uwriteln!(self.src, "let {} = {};", param_name, operand);
+                        param_name
+                    })
+                    .collect();
 
                 #[cfg(not(feature = "visitor"))]
                 let operand_vars: Vec<String> = Vec::new();
