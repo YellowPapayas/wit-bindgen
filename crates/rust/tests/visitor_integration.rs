@@ -120,10 +120,7 @@ impl Visitor for ValidateVisitor {
     ) -> Option<Self::FunctionContribution> {
         let mut contrib = RustFunctionContribution::new();
         if !annotation.is_empty() {
-            contrib.add_body_prefix(&format!(
-                "assert!({}, \"Validation failed\");",
-                annotation
-            ));
+            contrib.add_body_prefix(&format!("assert!({}, \"Validation failed\");", annotation));
         }
         Some(contrib)
     }

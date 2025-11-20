@@ -26,51 +26,97 @@ pub trait Visitor {
 
     /// Language-specific contribution type for modules/interfaces.
     type ModuleContribution;
-    
+
     /// Given the target string this visitor will receive
     fn target(&self) -> &str;
 
     // ==================== Type Definition Hooks ====================
-    fn visit_record(&mut self, _annotation: &String, _record: &Record, _type_id: TypeId) -> Option<Self::TypeContribution> {
+    fn visit_record(
+        &mut self,
+        _annotation: &String,
+        _record: &Record,
+        _type_id: TypeId,
+    ) -> Option<Self::TypeContribution> {
         None
     }
 
-    fn visit_variant(&mut self, _annotation: &String, _variant: &Variant, _type_id: TypeId) -> Option<Self::TypeContribution> {
+    fn visit_variant(
+        &mut self,
+        _annotation: &String,
+        _variant: &Variant,
+        _type_id: TypeId,
+    ) -> Option<Self::TypeContribution> {
         None
     }
 
-    fn visit_enum(&mut self, _annotation: &String, _enum: &Enum, _type_id: TypeId) -> Option<Self::TypeContribution> {
+    fn visit_enum(
+        &mut self,
+        _annotation: &String,
+        _enum: &Enum,
+        _type_id: TypeId,
+    ) -> Option<Self::TypeContribution> {
         None
     }
 
-    fn visit_flags(&mut self, _annotation: &String, _flags: &Flags, _type_id: TypeId) -> Option<Self::TypeContribution> {
+    fn visit_flags(
+        &mut self,
+        _annotation: &String,
+        _flags: &Flags,
+        _type_id: TypeId,
+    ) -> Option<Self::TypeContribution> {
         None
     }
-    
-    fn visit_resource(&mut self, _annotation: &String, _resource_id: TypeId) -> Option<Self::TypeContribution> {
+
+    fn visit_resource(
+        &mut self,
+        _annotation: &String,
+        _resource_id: TypeId,
+    ) -> Option<Self::TypeContribution> {
         None
     }
 
     // ==================== Field/Variant Member Hooks ====================
-    fn visit_field(&mut self, _annotation: &String, _field: &Field, _field_index: usize) -> Option<Self::FieldContribution> {
+    fn visit_field(
+        &mut self,
+        _annotation: &String,
+        _field: &Field,
+        _field_index: usize,
+    ) -> Option<Self::FieldContribution> {
         None
     }
 
-    fn visit_variant_case(&mut self, _annotation: &String, _case: &Case, _case_index: usize) -> Option<Self::VariantCaseContribution> {
+    fn visit_variant_case(
+        &mut self,
+        _annotation: &String,
+        _case: &Case,
+        _case_index: usize,
+    ) -> Option<Self::VariantCaseContribution> {
         None
     }
 
     // ==================== Function Hooks ====================
-    fn visit_function(&mut self, _annotation: &String, _func: &Function) -> Option<Self::FunctionContribution> {
+    fn visit_function(
+        &mut self,
+        _annotation: &String,
+        _func: &Function,
+    ) -> Option<Self::FunctionContribution> {
         None
     }
 
     // ==================== Module/Interface Hooks ====================
-    fn visit_interface(&mut self, _annotation: &String, _interface: Option<&Interface>) -> Option<Self::ModuleContribution> {
+    fn visit_interface(
+        &mut self,
+        _annotation: &String,
+        _interface: Option<&Interface>,
+    ) -> Option<Self::ModuleContribution> {
         None
     }
 
-    fn visit_world(&mut self, _annotation: &String, _world: &World) -> Option<Self::ModuleContribution> {
+    fn visit_world(
+        &mut self,
+        _annotation: &String,
+        _world: &World,
+    ) -> Option<Self::ModuleContribution> {
         None
     }
 }
