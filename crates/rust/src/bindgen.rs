@@ -873,6 +873,37 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                 }
                 self.push_str(&prev_src);
 
+                // Bind lifted operands to variables with WIT parameter names
+                // so body_prefix can access them with proper types
+                #[cfg(feature = "visitor")]
+                let operand_vars = if !self.func_contributions.is_empty() {
+                    operands
+                        .iter()
+                        .enumerate()
+                        .map(|(i, operand)| {
+                            let param_name = if i < func.params.len() {
+                                to_rust_ident(&func.params[i].0)
+                            } else {
+                                format!("_arg{}", i)
+                            };
+                            // Only bind if operand is not already a simple variable
+                            if operand.chars().all(|c| c.is_alphanumeric() || c == '_') {
+                                // Already a variable, no need to rebind
+                                operand.clone()
+                            } else {
+                                // Bind the expression to a variable
+                                uwriteln!(self.src, "let {} = {};", param_name, operand);
+                                param_name
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                };
+
+                #[cfg(not(feature = "visitor"))]
+                let operand_vars: Vec<String> = Vec::new();
+
                 // Emit visitor-contributed body prefix code (after lifting, before trait call)
                 #[cfg(feature = "visitor")]
                 for contrib in self.func_contributions {
@@ -916,7 +947,16 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                     }
                 };
                 self.push_str("(");
-                for (i, operand) in operands.iter().enumerate() {
+
+                // Use bound variables if visitor is enabled and operands were bound,
+                // otherwise use original operands
+                let operands_to_use = if operand_vars.is_empty() {
+                    operands
+                } else {
+                    &operand_vars
+                };
+
+                for (i, operand) in operands_to_use.iter().enumerate() {
                     if i > 0 {
                         self.push_str(", ");
                     }
