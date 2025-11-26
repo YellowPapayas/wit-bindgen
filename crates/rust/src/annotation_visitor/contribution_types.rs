@@ -11,7 +11,7 @@ pub struct RustTypeContribution {
 
 impl RustTypeContribution {
     pub fn new() -> Self {
-        Self::default()
+        RustTypeContribution { derives: Vec::new(), attributes: Vec::new() }
     }
 
     /// Add a derive macro

@@ -872,35 +872,36 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                     self.src.push_str(&decl);
                 }
                 self.push_str(&prev_src);
-
-                // Bind lifted operands to variables with WIT parameter names
-                // so body_prefix can access them with proper types
-                #[cfg(feature = "annotations")]
-                let operand_vars: Vec<String> = operands
-                    .iter()
-                    .enumerate()
-                    .map(|(i, operand)| {
-                        // CallInterface always has exactly func.params.len() operands
-                        let param_name = to_rust_ident(&func.params[i].0);
-
-                        // Always bind to WIT parameter name for predictable access in body_prefix
-                        uwriteln!(self.src, "let {} = {};", param_name, operand);
-                        param_name
-                    })
-                    .collect();
-
-                #[cfg(not(feature = "annotations"))]
-                let operand_vars: Vec<String> = Vec::new();
-
+                
                 // Emit visitor-contributed body prefix code (after lifting, before trait call)
                 #[cfg(feature = "annotations")]
-                for contrib in self.func_contributions {
-                    for code in &contrib.body_prefix {
-                        self.src.push_str(code);
-                        self.src.push_str("\n");
+                let operand_vars: Vec<String> = {
+                    for contrib in self.func_contributions {
+                        for code in &contrib.body_prefix {
+                            self.src.push_str(code);
+                            self.src.push_str("\n");
+                        }
                     }
-                }
-
+                    
+                    // Bind lifted operands to variables with WIT parameter names
+                    // so body_prefix can access them with proper types
+                    operands
+                        .iter()
+                        .enumerate()
+                        .map(|(i, operand)| {
+                            // CallInterface always has exactly func.params.len() operands
+                            let param_name = to_rust_ident(&func.params[i].0);
+    
+                            // Always bind to WIT parameter name for predictable access in body_prefix
+                            uwriteln!(self.src, "let {} = {};", param_name, operand);
+                            param_name
+                        })
+                        .collect()
+                };
+                
+                #[cfg(not(feature = "annotations"))]
+                let operand_vars: Vec<String> = Vec::new();
+                
                 let constructor_type = match &func.kind {
                     FunctionKind::Freestanding | FunctionKind::AsyncFreestanding => {
                         self.push_str(&format!("T::{}", to_rust_ident(func.item_name())));
