@@ -146,7 +146,7 @@ impl<'i> InterfaceGenerator<'i> {
     pub(super) fn generate_exports<'a>(
         &mut self,
         interface: Option<(InterfaceId, &WorldKey)>,
-        funcs: impl Iterator<Item = &'a Function> + Clone,
+        funcs: impl Iterator<Item = &'a Function>,
     ) -> Result<String> {
         let mut traits = BTreeMap::new();
         let mut funcs_to_export = Vec::new();
@@ -406,7 +406,7 @@ macro_rules! {macro_name} {{
 
     pub fn generate_imports<'a>(
         &mut self,
-        funcs: impl Iterator<Item = &'a Function> + Clone,
+        funcs: impl Iterator<Item = &'a Function>,
         interface: Option<&WorldKey>,
     ) {
         // Collect function contributions from visitors

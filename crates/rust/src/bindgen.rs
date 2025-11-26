@@ -883,8 +883,8 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                         }
                     }
                     
-                    // Bind lifted operands to variables with WIT parameter names
-                    // so body_prefix can access them with proper types
+                    // Assign the lifted values (WASM i32 -> Rust type) to the proper parameter names 
+                    // so the prefix code can access them by the name defined in the WIT file
                     operands
                         .iter()
                         .enumerate()

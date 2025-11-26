@@ -27,7 +27,8 @@ pub trait Visitor {
     /// Language-specific contribution type for modules/interfaces.
     type ModuleContribution;
 
-    /// Given the target string this visitor will receive
+    /// The target string for the annotations this visitor is designed to accept
+    /// i.e 'serde' would be the target in the annotations #serde(Serialize, Deserialize)
     fn target(&self) -> &str;
 
     // ==================== Type Definition Hooks ====================
