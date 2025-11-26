@@ -987,7 +987,18 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                     let tmp = self.tmp();
                     let result = format!("result{}", tmp);
                     uwriteln!(self.src, "let {result} = {};", operands[i]);
-                    results.push(result);
+                    results.push(result.clone());
+
+                    // Emit visitor-contributed body postfix code (after result is stored)
+                    #[cfg(feature = "visitor")]
+                    for contrib in self.func_contributions {
+                        for code in &contrib.body_postfix {
+                            // Replace __RESULT__ placeholder with actual result variable
+                            let code_with_result = code.replace("__RESULT__", &result);
+                            self.src.push_str(&code_with_result);
+                            self.src.push_str("\n");
+                        }
+                    }
                 }
             }
 
