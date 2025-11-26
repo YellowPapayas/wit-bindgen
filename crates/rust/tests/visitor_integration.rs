@@ -1,7 +1,7 @@
 // Contains 5 example visitor implementations and integration tests that verify visitor targets,
 // contribution types, and behavior
 
-#![cfg(feature = "visitor")]
+#![cfg(feature = "annotations")]
 
 use wit_bindgen_core::wit_parser::*;
 use wit_bindgen_core::Visitor;

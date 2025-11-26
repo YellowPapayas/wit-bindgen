@@ -21,7 +21,7 @@ pub(super) struct FunctionBindgen<'a, 'b> {
     pub import_return_pointer_area_align: Alignment,
     pub handle_decls: Vec<String>,
     always_owned: bool,
-    #[cfg(feature = "visitor")]
+    #[cfg(feature = "annotations")]
     func_contributions: &'b [crate::annotation_visitor::RustFunctionContribution],
 }
 
@@ -33,7 +33,7 @@ impl<'a, 'b> FunctionBindgen<'a, 'b> {
         params: Vec<String>,
         wasm_import_module: &'b str,
         always_owned: bool,
-        #[cfg(feature = "visitor")]
+        #[cfg(feature = "annotations")]
         func_contributions: &'b [crate::annotation_visitor::RustFunctionContribution],
     ) -> FunctionBindgen<'a, 'b> {
         FunctionBindgen {
@@ -49,7 +49,7 @@ impl<'a, 'b> FunctionBindgen<'a, 'b> {
             import_return_pointer_area_align: Default::default(),
             handle_decls: Vec::new(),
             always_owned,
-            #[cfg(feature = "visitor")]
+            #[cfg(feature = "annotations")]
             func_contributions,
         }
     }
@@ -875,7 +875,7 @@ impl Bindgen for FunctionBindgen<'_, '_> {
 
                 // Bind lifted operands to variables with WIT parameter names
                 // so body_prefix can access them with proper types
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotations")]
                 let operand_vars: Vec<String> = operands
                     .iter()
                     .enumerate()
@@ -889,11 +889,11 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                     })
                     .collect();
 
-                #[cfg(not(feature = "visitor"))]
+                #[cfg(not(feature = "annotations"))]
                 let operand_vars: Vec<String> = Vec::new();
 
                 // Emit visitor-contributed body prefix code (after lifting, before trait call)
-                #[cfg(feature = "visitor")]
+                #[cfg(feature = "annotations")]
                 for contrib in self.func_contributions {
                     for code in &contrib.body_prefix {
                         self.src.push_str(code);

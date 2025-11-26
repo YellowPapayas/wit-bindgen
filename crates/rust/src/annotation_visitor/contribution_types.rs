@@ -1,5 +1,5 @@
 /// Contributions for type definitions (passed as a mutable reference to visitor methods)
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotations")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustTypeContribution {
     /// Derive macros to add
@@ -31,7 +31,7 @@ impl RustTypeContribution {
 }
 
 /// Contributions for field definitions within records
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotations")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustFieldContribution {
     /// Field-level attributes
@@ -55,7 +55,7 @@ impl RustFieldContribution {
 }
 
 /// Contributions for variant/enum cases
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotations")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustVariantCaseContribution {
     /// Case-level attributes
@@ -79,7 +79,7 @@ impl RustVariantCaseContribution {
 }
 
 /// Contributions for function definitions
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotations")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustFunctionContribution {
     /// Function-level attributes
@@ -112,7 +112,7 @@ impl RustFunctionContribution {
 }
 
 /// Contributions for module-level code
-#[cfg_attr(docsrs, doc(cfg(feature = "visitor")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "annotations")))]
 #[derive(Default, Debug, Clone)]
 pub struct RustModuleContribution {
     /// Use statements to add
