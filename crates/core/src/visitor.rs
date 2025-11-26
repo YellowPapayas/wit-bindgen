@@ -31,91 +31,101 @@ pub trait Visitor {
     fn target(&self) -> &str;
 
     // ==================== Type Definition Hooks ====================
+    #[allow(unused)]
     fn visit_record(
         &mut self,
-        _annotation: &String,
-        _record: &Record,
-        _type_id: TypeId,
+        annotation: &String,
+        record: &Record,
+        type_id: TypeId,
     ) -> Option<Self::TypeContribution> {
         None
     }
-
+    
+    #[allow(unused)]
     fn visit_variant(
         &mut self,
-        _annotation: &String,
-        _variant: &Variant,
-        _type_id: TypeId,
+        annotation: &String,
+        variant: &Variant,
+        type_id: TypeId,
     ) -> Option<Self::TypeContribution> {
         None
     }
-
+    
+    #[allow(unused)]
     fn visit_enum(
         &mut self,
-        _annotation: &String,
-        _enum: &Enum,
-        _type_id: TypeId,
+        annotation: &String,
+        enum_: &Enum,
+        type_id: TypeId,
     ) -> Option<Self::TypeContribution> {
         None
     }
 
+    #[allow(unused)]
     fn visit_flags(
         &mut self,
-        _annotation: &String,
-        _flags: &Flags,
-        _type_id: TypeId,
+        annotation: &String,
+        flags: &Flags,
+        type_id: TypeId,
     ) -> Option<Self::TypeContribution> {
         None
     }
 
+    #[allow(unused)]
     fn visit_resource(
         &mut self,
-        _annotation: &String,
-        _resource_id: TypeId,
+        annotation: &String,
+        resource_id: TypeId,
     ) -> Option<Self::TypeContribution> {
         None
     }
 
     // ==================== Field/Variant Member Hooks ====================
+    #[allow(unused)]
     fn visit_field(
         &mut self,
-        _annotation: &String,
-        _field: &Field,
-        _field_index: usize,
+        annotation: &String,
+        field: &Field,
+        field_index: usize,
     ) -> Option<Self::FieldContribution> {
         None
     }
 
+    #[allow(unused)]
     fn visit_variant_case(
         &mut self,
-        _annotation: &String,
-        _case: &Case,
-        _case_index: usize,
+        annotation: &String,
+        case: &Case,
+        case_index: usize,
     ) -> Option<Self::VariantCaseContribution> {
         None
     }
 
     // ==================== Function Hooks ====================
+    #[allow(unused)]
     fn visit_function(
         &mut self,
-        _annotation: &String,
-        _func: &Function,
+        annotation: &String,
+        func: &Function,
     ) -> Option<Self::FunctionContribution> {
         None
     }
 
     // ==================== Module/Interface Hooks ====================
+    #[allow(unused)]
     fn visit_interface(
         &mut self,
-        _annotation: &String,
-        _interface: Option<&Interface>,
+        annotation: &String,
+        interface: Option<&Interface>,
     ) -> Option<Self::ModuleContribution> {
         None
     }
 
+    #[allow(unused)]
     fn visit_world(
         &mut self,
-        _annotation: &String,
-        _world: &World,
+        annotation: &String,
+        world: &World,
     ) -> Option<Self::ModuleContribution> {
         None
     }
