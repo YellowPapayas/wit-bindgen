@@ -18,7 +18,7 @@ pub use async_::AsyncFilterSet;
 #[cfg(feature = "visitor")]
 pub mod visitor;
 #[cfg(feature = "visitor")]
-pub use visitor::Visitor;
+pub use visitor::{Visitor, ContributionTypes};
 
 #[derive(Default, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Direction {

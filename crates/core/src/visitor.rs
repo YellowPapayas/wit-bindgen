@@ -1,9 +1,30 @@
 use wit_parser::*;
 
+/// Trait for grouping all contribution types together as a type family.
+///
+/// Each language backend creates a struct implementing this trait to define
+/// its contribution types in one place.
+pub trait ContributionTypes {
+    /// Contribution type for type definitions (records, variants, enums, flags, resources)
+    type Type;
+
+    /// Contribution type for fields within records
+    type Field;
+
+    /// Contribution type for variant cases
+    type VariantCase;
+
+    /// Contribution type for functions
+    type Function;
+
+    /// Contribution type for modules/interfaces
+    type Module;
+}
+
 /// Generic visitor trait for all language backends.
 ///
-/// This trait uses associated types to allow each language backend to define
-/// its own contribution types while sharing the core visitor pattern.
+/// This trait uses a nested associated type pattern where implementations
+/// specify a `Contributions` type that bundles all contribution types together.
 ///
 /// All methods have default implementations that return `None`, so implementations
 /// only need to override the hooks they care about.
@@ -12,20 +33,8 @@ use wit_parser::*;
 /// and can optionally return language-specific contributions (attributes,
 /// derives, additional code, etc.).
 pub trait Visitor {
-    /// Language-specific contribution type for types (records, variants, enums, etc.)
-    type TypeContribution;
-
-    /// Language-specific contribution type for fields within records.
-    type FieldContribution;
-
-    /// Language-specific contribution type for variant cases.
-    type VariantCaseContribution;
-
-    /// Language-specific contribution type for functions.
-    type FunctionContribution;
-
-    /// Language-specific contribution type for modules/interfaces.
-    type ModuleContribution;
+    /// The type family containing all contribution types for this visitor
+    type Contributions: ContributionTypes;
 
     /// Given the target string this visitor will receive
     fn target(&self) -> &str;
@@ -36,7 +45,7 @@ pub trait Visitor {
         _annotation: &String,
         _record: &Record,
         _type_id: TypeId,
-    ) -> Option<Self::TypeContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Type> {
         None
     }
 
@@ -45,7 +54,7 @@ pub trait Visitor {
         _annotation: &String,
         _variant: &Variant,
         _type_id: TypeId,
-    ) -> Option<Self::TypeContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Type> {
         None
     }
 
@@ -54,7 +63,7 @@ pub trait Visitor {
         _annotation: &String,
         _enum: &Enum,
         _type_id: TypeId,
-    ) -> Option<Self::TypeContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Type> {
         None
     }
 
@@ -63,7 +72,7 @@ pub trait Visitor {
         _annotation: &String,
         _flags: &Flags,
         _type_id: TypeId,
-    ) -> Option<Self::TypeContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Type> {
         None
     }
 
@@ -71,7 +80,7 @@ pub trait Visitor {
         &mut self,
         _annotation: &String,
         _resource_id: TypeId,
-    ) -> Option<Self::TypeContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Type> {
         None
     }
 
@@ -81,7 +90,7 @@ pub trait Visitor {
         _annotation: &String,
         _field: &Field,
         _field_index: usize,
-    ) -> Option<Self::FieldContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Field> {
         None
     }
 
@@ -90,7 +99,7 @@ pub trait Visitor {
         _annotation: &String,
         _case: &Case,
         _case_index: usize,
-    ) -> Option<Self::VariantCaseContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::VariantCase> {
         None
     }
 
@@ -99,7 +108,7 @@ pub trait Visitor {
         &mut self,
         _annotation: &String,
         _func: &Function,
-    ) -> Option<Self::FunctionContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Function> {
         None
     }
 
@@ -108,7 +117,7 @@ pub trait Visitor {
         &mut self,
         _annotation: &String,
         _interface: Option<&Interface>,
-    ) -> Option<Self::ModuleContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Module> {
         None
     }
 
@@ -116,7 +125,7 @@ pub trait Visitor {
         &mut self,
         _annotation: &String,
         _world: &World,
-    ) -> Option<Self::ModuleContribution> {
+    ) -> Option<<Self::Contributions as ContributionTypes>::Module> {
         None
     }
 }

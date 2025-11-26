@@ -1,42 +1,24 @@
 mod contribution_types;
-use wit_bindgen_core::Visitor;
+use wit_bindgen_core::{ContributionTypes, Visitor};
 
 pub use contribution_types::{
     RustFieldContribution, RustFunctionContribution, RustModuleContribution, RustTypeContribution,
     RustVariantCaseContribution,
 };
 
-// Rust-specific visitor trait
-pub trait RustVisitor:
-    Visitor<
-    TypeContribution = RustTypeContribution,
-    FieldContribution = RustFieldContribution,
-    VariantCaseContribution = RustVariantCaseContribution,
-    FunctionContribution = RustFunctionContribution,
-    ModuleContribution = RustModuleContribution,
->
-{
+/// Type family for Rust contribution types
+pub struct RustContributions;
+
+impl ContributionTypes for RustContributions {
+    type Type = RustTypeContribution;
+    type Field = RustFieldContribution;
+    type VariantCase = RustVariantCaseContribution;
+    type Function = RustFunctionContribution;
+    type Module = RustModuleContribution;
 }
+
+// Rust-specific visitor trait
+pub trait RustVisitor: Visitor<Contributions = RustContributions> {}
 
 // any type that implements Visitor with the right associated types automatically implements RustVisitor
-impl<T> RustVisitor for T where
-    T: Visitor<
-        TypeContribution = RustTypeContribution,
-        FieldContribution = RustFieldContribution,
-        VariantCaseContribution = RustVariantCaseContribution,
-        FunctionContribution = RustFunctionContribution,
-        ModuleContribution = RustModuleContribution,
-    >
-{
-}
-
-#[macro_export]
-macro_rules! rust_visitor {
-    () => {
-        type TypeContribution = RustTypeContribution;
-        type FieldContribution = RustFieldContribution;
-        type VariantCaseContribution = RustVariantCaseContribution;
-        type FunctionContribution = RustFunctionContribution;
-        type ModuleContribution = RustModuleContribution;
-    };
-}
+impl<T> RustVisitor for T where T: Visitor<Contributions = RustContributions> {}
