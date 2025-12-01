@@ -870,6 +870,10 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                 }
                 self.push_str(&prev_src);
 
+                // Check if we need to emit body_suffix (for logging outputs)
+                let has_body_suffix = self.func_contributions.iter().any(|c| !c.body_suffix.is_empty());
+                let has_result = func.result.is_some();
+
                 // Emit visitor-contributed body prefix code (after lifting, before trait call)
                 let operand_vars: Vec<String> = {
                     for contrib in self.func_contributions {
@@ -894,6 +898,11 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                         })
                         .collect()
                 };
+
+                // If we have body_suffix and a result, capture it in a temp variable
+                if has_body_suffix && has_result {
+                    self.push_str("let __wit_result = ");
+                }
 
                 let constructor_type = match &func.kind {
                     FunctionKind::Freestanding | FunctionKind::AsyncFreestanding => {
@@ -966,7 +975,26 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                     }
                     None => {}
                 }
-                self.push_str("\n};\n");
+
+                // If we captured the result, end the statement and emit body_suffix
+                if has_body_suffix && has_result {
+                    self.push_str(";\n");
+
+                    // Emit visitor-contributed body suffix code (after trait call, with access to __wit_result)
+                    for contrib in self.func_contributions {
+                        for code in &contrib.body_suffix {
+                            self.src.push_str(code);
+                            self.src.push_str("\n");
+                        }
+                    }
+
+                    // Return the result
+                    self.push_str("__wit_result\n");
+                } else {
+                    self.push_str("\n");
+                }
+
+                self.push_str("};\n");
             }
 
             Instruction::AsyncTaskReturn { name, params } => {

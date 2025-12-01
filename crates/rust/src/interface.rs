@@ -857,6 +857,14 @@ pub mod vtable{ordinal} {{
         }
 
         self.src.push_str("}\n");
+
+        // Emit visitor-contributed body suffix code
+        for contrib in func_contributions {
+            for code in &contrib.body_suffix {
+                uwriteln!(self.src, "    {}", code);
+            }
+        }
+
         self.src.push_str("}\n");
 
         if func.kind.resource().is_some() {

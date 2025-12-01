@@ -86,7 +86,9 @@ pub struct RustFunctionContribution {
 
     /// Code to prepend to function body
     pub body_prefix: Vec<String>,
-    // TODO: Code to append to function body (body_postfix)
+
+    /// Code to append to function body (after the result is computed)
+    pub body_suffix: Vec<String>,
 }
 
 impl RustFunctionContribution {
@@ -104,9 +106,14 @@ impl RustFunctionContribution {
         self.body_prefix.push(code.into());
     }
 
+    /// Add code to append to function body
+    pub fn add_body_suffix(&mut self, code: impl Into<String>) {
+        self.body_suffix.push(code.into());
+    }
+
     /// Check if empty
     pub fn is_empty(&self) -> bool {
-        self.attributes.is_empty() && self.body_prefix.is_empty()
+        self.attributes.is_empty() && self.body_prefix.is_empty() && self.body_suffix.is_empty()
     }
 }
 
