@@ -129,7 +129,7 @@ version = "4.5.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbfd7eae0b0f1a6e63d4b13c9c478de77c2eb546fba158ad50b4203dc24b9f9c"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "proc-macro2",
  "quote",
  "syn",
@@ -145,7 +145,7 @@ checksum = "b94f61472cee1439c0b966b47e3aca9ae07e45d070759512cd390ea2bebc6675"
 name = "codegen-macro"
 version = "0.0.0"
 dependencies = [
- "heck",
+ "heck 0.5.0",
  "quote",
 ]
 
@@ -347,6 +347,12 @@ name = "hashbrown"
 version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5419bdc4f6a9207fbeba6d11b604d481addf78ecd10c11ad51e76c2f6482748d"
+
+[[package]]
+name = "heck"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "heck"
@@ -1019,10 +1025,11 @@ checksum = "8d0fcd636ad2b29a7c0490799a23ad61d1c8dedfafdb970447fddd0549502b60"
 [[package]]
 name = "wasm-compose"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "feeb9a231e63bd5d5dfe07e9f8daa53d5c85e4f7de5ef756d3b4e6a5f501c578"
 dependencies = [
  "anyhow",
- "heck",
+ "heck 0.4.1",
  "im-rc",
  "indexmap",
  "log",
@@ -1048,7 +1055,8 @@ dependencies = [
 [[package]]
 name = "wasm-encoder"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06d642d8c5ecc083aafe9ceb32809276a304547a3a6eeecceb5d8152598bc71f"
 dependencies = [
  "leb128fmt",
  "wasmparser 0.240.0",
@@ -1073,7 +1081,8 @@ dependencies = [
 [[package]]
 name = "wasm-metadata"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee093e1e1ccffa005b9b778f7a10ccfd58e25a20eccad294a1a93168d076befb"
 dependencies = [
  "anyhow",
  "indexmap",
@@ -1095,7 +1104,8 @@ dependencies = [
 [[package]]
 name = "wasmparser"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b722dcf61e0ea47440b53ff83ccb5df8efec57a69d150e4f24882e4eba7e24a4"
 dependencies = [
  "bitflags",
  "hashbrown 0.15.5",
@@ -1107,7 +1117,8 @@ dependencies = [
 [[package]]
 name = "wast"
 version = "240.0.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0efe1c93db4ac562b9733e3dca19ed7fc878dba29aef22245acf84f13da4a19"
 dependencies = [
  "bumpalo",
  "leb128fmt",
@@ -1119,7 +1130,8 @@ dependencies = [
 [[package]]
 name = "wat"
 version = "1.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ec9b6eab7ecd4d639d78515e9ea491c9bacf494aa5eda10823bd35992cf8c1e"
 dependencies = [
  "wast",
 ]
@@ -1239,7 +1251,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck",
+ "heck 0.5.0",
  "indexmap",
  "wasm-encoder 0.240.0",
  "wasm-metadata 0.240.0",
@@ -1272,7 +1284,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck",
+ "heck 0.5.0",
  "serde",
  "wit-parser",
 ]
@@ -1283,7 +1295,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck",
+ "heck 0.5.0",
  "test-helpers",
  "wasm-encoder 0.240.0",
  "wasm-metadata 0.240.0",
@@ -1298,7 +1310,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck",
+ "heck 0.5.0",
  "indexmap",
  "wasm-metadata 0.240.0",
  "wit-bindgen-core",
@@ -1312,7 +1324,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck",
+ "heck 0.5.0",
  "pulldown-cmark",
  "wit-bindgen-core",
 ]
@@ -1323,7 +1335,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck",
+ "heck 0.5.0",
  "wit-bindgen-core",
 ]
 
@@ -1334,7 +1346,7 @@ dependencies = [
  "anyhow",
  "clap",
  "futures",
- "heck",
+ "heck 0.5.0",
  "indexmap",
  "prettyplease",
  "serde",
@@ -1366,7 +1378,7 @@ version = "0.47.0"
 dependencies = [
  "anyhow",
  "clap",
- "heck",
+ "heck 0.5.0",
  "indexmap",
  "log",
  "rayon",
@@ -1389,7 +1401,8 @@ dependencies = [
 [[package]]
 name = "wit-component"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7dc5474b078addc5fe8a72736de8da3acfb3ff324c2491133f8b59594afa1a20"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -1408,7 +1421,8 @@ dependencies = [
 [[package]]
 name = "wit-parser"
 version = "0.240.0"
-source = "git+https://github.com/YellowPapayas/wasm-tools.git?branch=iteration-3#30ccfad0f29693b2f587b5041a010fea16f894c8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9875ea3fa272f57cc1fc50f225a7b94021a7878c484b33792bccad0d93223439"
 dependencies = [
  "anyhow",
  "id-arena",

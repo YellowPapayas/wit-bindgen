@@ -4,15 +4,8 @@ use crate::{
     to_upper_camel_case, wasm_type, ConstructorReturnType, FnSig, Identifier, InterfaceName,
     Ownership, RuntimeItem, RustFlagsRepr, RustWasm, TypeGeneration,
 };
-
-use crate::annotation_visitor::{
-    RustFieldContribution, RustFunctionContribution, RustModuleContribution, RustTypeContribution,
-    RustVariantCaseContribution,
-};
-
 use anyhow::Result;
 use heck::*;
-use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::mem;
@@ -144,30 +137,13 @@ impl<'i> InterfaceGenerator<'i> {
     pub(super) fn generate_exports<'a>(
         &mut self,
         interface: Option<(InterfaceId, &WorldKey)>,
-        funcs: impl Iterator<Item = &'a Function>,
+        funcs: impl Iterator<Item = &'a Function> + Clone,
     ) -> Result<String> {
         let mut traits = BTreeMap::new();
         let mut funcs_to_export = Vec::new();
         let mut resources_to_drop = Vec::new();
 
         traits.insert(None, ("Guest".to_string(), Vec::new()));
-
-        // Collect function contributions from visitors
-        let mut func_contributions: HashMap<String, Vec<RustFunctionContribution>> = HashMap::new();
-
-        if let Some((id, _)) = interface {
-            for (func_name, func) in &self.resolve.interfaces[id].functions {
-                let mut contributions = vec![];
-                for (target, value) in func.annotations.iter() {
-                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
-                        if let Some(contrib) = visitor.visit_function(value, func) {
-                            contributions.push(contrib);
-                        }
-                    }
-                }
-                func_contributions.insert(func_name.clone(), contributions);
-            }
-        }
 
         if let Some((id, _)) = interface {
             for (name, id) in self.resolve.interfaces[id].types.iter() {
@@ -193,19 +169,7 @@ impl<'i> InterfaceGenerator<'i> {
 
             funcs_to_export.push((func, resource, async_));
             let (trait_name, methods) = traits.get_mut(&resource).unwrap();
-
-            let contributions = func_contributions
-                .get(&func.name)
-                .map(|v| v.as_slice())
-                .unwrap_or(&[]);
-
-            self.generate_guest_export(
-                func,
-                interface.map(|(_, k)| k),
-                &trait_name,
-                async_,
-                contributions,
-            );
+            self.generate_guest_export(func, interface.map(|(_, k)| k), &trait_name, async_);
 
             let prev = mem::take(&mut self.src);
             let mut sig = FnSig {
@@ -215,17 +179,6 @@ impl<'i> InterfaceGenerator<'i> {
                 ..Default::default()
             };
             sig.update_for_func(&func);
-
-            // Emit visitor-contributed attributes for trait method
-            if let Some(contribs) = func_contributions.get(&func.name) {
-                for contrib in contribs {
-                    for attr in &contrib.attributes {
-                        self.src.push_str(attr);
-                        self.src.push_str("\n");
-                    }
-                }
-            }
-
             self.print_signature(func, true, &sig);
             self.src.push_str(";\n");
             let trait_method = mem::replace(&mut self.src, prev);
@@ -402,32 +355,8 @@ macro_rules! {macro_name} {{
         funcs: impl Iterator<Item = &'a Function>,
         interface: Option<&WorldKey>,
     ) {
-        // Collect function contributions from visitors
-        let mut func_contributions: HashMap<String, Vec<RustFunctionContribution>> = HashMap::new();
-
-        if let Some(key) = interface {
-            if let WorldKey::Interface(id) = key {
-                for (func_name, func) in &self.resolve.interfaces[*id].functions {
-                    let mut contributions = vec![];
-                    for (target, value) in func.annotations.iter() {
-                        if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
-                            if let Some(contrib) = visitor.visit_function(value, func) {
-                                contributions.push(contrib);
-                            }
-                        }
-                    }
-                    func_contributions.insert(func_name.clone(), contributions);
-                }
-            }
-        }
-
         for func in funcs {
-            let contributions = func_contributions
-                .get(&func.name)
-                .map(|v| v.as_slice())
-                .unwrap_or(&[]);
-
-            self.generate_guest_import(func, interface, contributions);
+            self.generate_guest_import(func, interface);
         }
     }
 
@@ -507,55 +436,7 @@ macro_rules! {macro_name} {{
     }
 
     pub fn finish_append_submodule(mut self, snake: &str, module_path: Vec<String>, docs: &Docs) {
-        let mut module = self.finish();
-
-        // Apply visitor contributions to the module if any are registered
-        {
-            // Extract the current interface being generated, if we're in an interface context
-            let interface_obj = match self.identifier {
-                Identifier::Interface(id, _) => Some(&self.resolve.interfaces[id]),
-                _ => None,
-            };
-
-            if let Some(interface) = interface_obj {
-                // Create a container to accumulate all visitor contributions for this module
-                let mut visitor_contribution = RustModuleContribution::new();
-
-                // Iterate through all annotations attached to this interface
-                // (Annotations are key-value pairs where the key identifies which visitor should handle it)
-                for (target, value) in interface.annotations.iter() {
-                    // Look up the visitor registered for this annotation target
-                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
-                        // Let the visitor inspect the interface and generate code contributions
-                        if let Some(contrib) = visitor.visit_interface(value, Some(interface)) {
-                            // Merge this visitor's use statements into our accumulated set
-                            visitor_contribution
-                                .use_statements
-                                .extend(contrib.use_statements);
-                            // Merge this visitor's additional code into our accumulated set
-                            visitor_contribution
-                                .additional_code
-                                .extend(contrib.additional_code);
-                        }
-                    }
-                }
-
-                // Apply visitor contributions to module (need to merge their contributions into the module string)
-                let mut contributions = String::new();
-                // Add all use statements first
-                for use_stmt in &visitor_contribution.use_statements {
-                    contributions.push_str(&format!("{}\n", use_stmt));
-                }
-                // Add any additional code blocks (functions, impls, etc.) after the use statements
-                for code in &visitor_contribution.additional_code {
-                    contributions.push_str(&format!("{}\n", code));
-                }
-                // If visitors contributed anything, prepend it to the module content (ensures visitor code appears first)
-                if !contributions.is_empty() {
-                    module = format!("{}\n{}", contributions, module);
-                }
-            }
-        }
+        let module = self.finish();
 
         self.rustdoc(docs);
         let docs = mem::take(&mut self.src).to_string();
@@ -804,12 +685,7 @@ pub mod vtable{ordinal} {{
         map.insert(name, code);
     }
 
-    fn generate_guest_import(
-        &mut self,
-        func: &Function,
-        interface: Option<&WorldKey>,
-        func_contributions: &[RustFunctionContribution],
-    ) {
+    fn generate_guest_import(&mut self, func: &Function, interface: Option<&WorldKey>) {
         if self.r#gen.skip.contains(&func.name) {
             return;
         }
@@ -828,26 +704,9 @@ pub mod vtable{ordinal} {{
             sig.use_item_name = true;
             sig.update_for_func(&func);
         }
-
-        // Emit visitor-contributed attributes
-        for contrib in func_contributions {
-            for attr in &contrib.attributes {
-                self.src.push_str(attr);
-                self.src.push_str("\n");
-            }
-        }
-
         self.src.push_str("#[allow(unused_unsafe, clippy::all)]\n");
         let params = self.print_signature(func, async_, &sig);
         self.src.push_str("{\n");
-
-        // Emit visitor-contributed body prefix code
-        for contrib in func_contributions {
-            for code in &contrib.body_prefix {
-                uwriteln!(self.src, "    {}", code);
-            }
-        }
-
         self.src.push_str("unsafe {\n");
 
         if async_ {
@@ -865,7 +724,7 @@ pub mod vtable{ordinal} {{
     }
 
     fn lower_to_memory(&mut self, address: &str, value: &str, ty: &Type, module: &str) -> String {
-        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true);
         abi::lower_to_memory(f.r#gen.resolve, &mut f, address.into(), value.into(), ty);
         format!("unsafe {{ {} }}", String::from(f.src))
     }
@@ -877,7 +736,7 @@ pub mod vtable{ordinal} {{
         indirect: bool,
         module: &str,
     ) -> String {
-        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true);
         abi::deallocate_lists_in_types(f.r#gen.resolve, types, operands, indirect, &mut f);
         format!("unsafe {{ {} }}", String::from(f.src))
     }
@@ -889,13 +748,13 @@ pub mod vtable{ordinal} {{
         indirect: bool,
         module: &str,
     ) -> String {
-        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true);
         abi::deallocate_lists_and_own_in_types(f.r#gen.resolve, types, operands, indirect, &mut f);
         format!("unsafe {{ {} }}", String::from(f.src))
     }
 
     fn lift_from_memory(&mut self, address: &str, ty: &Type, module: &str) -> String {
-        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true);
         let result = abi::lift_from_memory(f.r#gen.resolve, &mut f, address.into(), ty);
         format!("unsafe {{ {}\n{result} }}", String::from(f.src))
     }
@@ -906,7 +765,7 @@ pub mod vtable{ordinal} {{
         func: &Function,
         params: Vec<String>,
     ) {
-        let mut f = FunctionBindgen::new(self, params, module, false, &[]);
+        let mut f = FunctionBindgen::new(self, params, module, false);
         abi::call(
             f.r#gen.resolve,
             AbiVariant::GuestImport,
@@ -1122,7 +981,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             }
             lowers.push("ParamsLower(_ptr,)".to_string());
         } else {
-            let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
+            let mut f = FunctionBindgen::new(self, Vec::new(), module, true);
             let mut results = Vec::new();
             for (i, (_, ty)) in func.params.iter().enumerate() {
                 let name = format!("_lower{i}");
@@ -1179,19 +1038,10 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         interface: Option<&WorldKey>,
         trait_name: &str,
         async_: bool,
-        func_contributions: &[RustFunctionContribution],
     ) {
         let name_snake = func.name.to_snake_case().replace('.', "_");
 
         self.generate_payloads("[export]", func, interface);
-
-        // Emit visitor-contributed attributes
-        for contrib in func_contributions {
-            for attr in &contrib.attributes {
-                self.src.push_str(attr);
-                self.src.push_str("\n");
-            }
-        }
 
         uwrite!(
             self.src,
@@ -1220,13 +1070,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             );
         }
 
-        let mut f = FunctionBindgen::new(
-            self,
-            params,
-            self.wasm_import_module,
-            false,
-            func_contributions,
-        );
+        let mut f = FunctionBindgen::new(self, params, self.wasm_import_module, false);
         let variant = if async_ {
             AbiVariant::GuestExportAsync
         } else {
@@ -1296,7 +1140,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             let params = self.print_post_return_sig(func);
             self.src.push_str("{ unsafe {\n");
 
-            let mut f = FunctionBindgen::new(self, params, self.wasm_import_module, false, &[]);
+            let mut f = FunctionBindgen::new(self, params, self.wasm_import_module, false);
             abi::post_return(f.r#gen.resolve, func, &mut f);
             let FunctionBindgen {
                 needs_cleanup_list,
@@ -2106,17 +1950,6 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
         for (name, mode) in self.modes_of(id) {
-            let mut type_contributions: Vec<RustTypeContribution> = vec![];
-
-            for (annotation_target, annotation_value) in self.resolve.types[id].annotations.iter() {
-                if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
-                    if let Some(contribution) = visitor.visit_record(annotation_value, record, id) {
-                        type_contributions.push(contribution);
-                    }
-                }
-                // TODO: maybe add a warning when there is no match for an annotation
-            }
-
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
             if !self
@@ -2127,35 +1960,12 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             {
                 derives.extend(additional_derives.clone());
             }
-
-            // Apply visitor-contributed derives:
-            // These are merged with the standard derives (Copy, Clone, etc.) that are
-            // automatically added based on type characteristics. Using a BTreeSet ensures
-            // no duplicates and maintains a stable order in the generated #[derive(...)] attribute.
-            for contrib in type_contributions.iter() {
-                for derive in contrib.derives.iter() {
-                    derives.insert(derive.clone());
-                }
-            }
-
             if info.is_copy() {
                 self.push_str("#[repr(C)]\n");
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
             } else if info.is_clone() {
                 derives.insert("Clone".to_string());
             }
-
-            // Emit visitor-contributed custom attributes:
-            // These appear before the #[derive(...)] attribute on the struct definition.
-            // Examples include #[serde(rename_all = "camelCase")] or other custom proc-macro
-            // attributes that visitors want to apply to customize code generation.
-            for contrib in type_contributions.iter() {
-                for attr in &contrib.attributes {
-                    self.push_str(attr);
-                    self.push_str("\n");
-                }
-            }
-
             if !derives.is_empty() {
                 self.push_str("#[derive(");
                 self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
@@ -2164,35 +1974,8 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             self.push_str(&format!("pub struct {}", name));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
-
-            for (field_idx, field) in record.fields.iter().enumerate() {
-                let mut field_contributions: Vec<RustFieldContribution> = vec![];
-
-                for (annotation_target, annotation_value) in field.annotations.iter() {
-                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
-                        if let Some(contrib) =
-                            visitor.visit_field(annotation_value, field, field_idx)
-                        {
-                            field_contributions.push(contrib);
-                        }
-                    }
-                    // TODO: maybe add a warning when there is no match for an annotation
-                }
-
+            for field in record.fields.iter() {
                 self.rustdoc(&field.docs);
-
-                // Emit field-specific attributes:
-                // These are indented with 4 spaces to appear before each field declaration
-                // inside the struct body. Visitors can customize serialization, validation,
-                // or other field-level behavior through these attributes.
-                for field_contrib in field_contributions.iter() {
-                    for attr in &field_contrib.attributes {
-                        self.push_str("    ");
-                        self.push_str(attr);
-                        self.push_str("\n");
-                    }
-                }
-
                 self.push_str("pub ");
                 self.push_str(&to_rust_ident(&field.name));
                 self.push_str(": ");
@@ -2257,7 +2040,6 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 .iter()
                 .map(|c| (c.name.to_upper_camel_case(), &c.docs, c.ty.as_ref())),
             docs,
-            Some(variant),
         );
     }
 
@@ -2266,7 +2048,6 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         id: TypeId,
         cases: impl IntoIterator<Item = (String, &'b Docs, Option<&'b Type>)> + Clone,
         docs: &Docs,
-        _variant: Option<&Variant>,
     ) where
         Self: Sized,
     {
@@ -2280,23 +2061,6 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             .cloned()
             .collect();
         for (name, mode) in self.modes_of(id) {
-            let mut type_contributions: Vec<RustTypeContribution> = vec![];
-
-            if let Some(variant) = _variant {
-                for (annotation_target, annotation_value) in
-                    self.resolve.types[id].annotations.iter()
-                {
-                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
-                        if let Some(contribution) =
-                            visitor.visit_variant(annotation_value, variant, id)
-                        {
-                            type_contributions.push(contribution);
-                        }
-                    }
-                    // TODO: maybe add a warning when there is no match for an annotation
-                }
-            }
-
             self.rustdoc(docs);
             let mut derives = BTreeSet::new();
             if !self
@@ -2307,90 +2071,19 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             {
                 derives.extend(additional_derives.clone());
             }
-
-            // Apply visitor-contributed derives for variants:
-            // Same derive-merging logic as records - visitor derives are combined with
-            // standard derives (Copy, Clone) based on type characteristics, with BTreeSet
-            // ensuring no duplicates in the final #[derive(...)] attribute.
-            for contrib in type_contributions.iter() {
-                for derive in contrib.derives.iter() {
-                    derives.insert(derive.clone());
-                }
-            }
-
             if info.is_copy() {
                 derives.extend(["Copy", "Clone"].into_iter().map(|s| s.to_string()));
             } else if info.is_clone() {
                 derives.insert("Clone".to_string());
             }
-
-            // Emit visitor-contributed enum-level attributes:
-            // These appear before the #[derive(...)] on the enum definition itself.
-            // Can include attributes like #[repr(C)], #[non_exhaustive], or custom
-            // proc-macro attributes that apply to the entire enum type.
-            for contrib in type_contributions.iter() {
-                for attr in &contrib.attributes {
-                    self.push_str(attr);
-                    self.push_str("\n");
-                }
-            }
-
             if !derives.is_empty() {
                 self.push_str("#[derive(");
                 self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
-                self.push_str(")]\n");
+                self.push_str(")]\n")
             }
-
-            // emit derives and enum declaration
             self.push_str(&format!("pub enum {name}"));
             self.print_generics(mode.lifetime);
             self.push_str(" {\n");
-
-            for (_case_idx, (case_name, case_docs, payload)) in
-                cases.clone().into_iter().enumerate()
-            {
-                let mut case_contributions: Vec<RustVariantCaseContribution> = vec![];
-
-                if let Some(v) = _variant {
-                    for (annotation_target, annotation_value) in
-                        self.resolve.types[id].annotations.iter()
-                    {
-                        if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
-                            if let Some(contribution) = visitor.visit_variant_case(
-                                annotation_value,
-                                &v.cases[_case_idx],
-                                _case_idx,
-                            ) {
-                                case_contributions.push(contribution);
-                            }
-                        }
-                    }
-                }
-
-                self.rustdoc(case_docs);
-
-                // Emit variant-case-specific attributes:
-                // These are indented with 4 spaces to appear before each variant case inside
-                // the enum body. Commonly used for renaming variants in serialization formats
-                // or adding validation/documentation attributes to specific enum cases.
-                for contrib in case_contributions {
-                    for attr in contrib.attributes {
-                        self.push_str("    ");
-                        self.push_str(&attr);
-                        self.push_str("\n");
-                    }
-                }
-
-                self.push_str(&case_name);
-                if let Some(ty) = payload {
-                    self.push_str("(");
-                    let mode = self.filter_mode(ty, mode);
-                    self.print_ty(ty, mode);
-                    self.push_str(")")
-                }
-                self.push_str(",\n");
-            }
-
             for (case_name, docs, payload) in cases.clone() {
                 self.rustdoc(docs);
                 self.push_str(&case_name);
@@ -2521,22 +2214,9 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         for attr in attrs {
             self.push_str(&format!("{}\n", attr));
         }
-
         self.push_str("#[repr(");
         self.int_repr(enum_.tag());
         self.push_str(")]\n");
-
-        let mut enum_contributions: Vec<RustTypeContribution> = vec![];
-
-        for (annotation_target, annotation_value) in self.resolve.types[id].annotations.iter() {
-            if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
-                if let Some(contribution) = visitor.visit_enum(annotation_value, enum_, id) {
-                    enum_contributions.push(contribution);
-                }
-            }
-            // TODO: maybe add a warning when there is no match for an annotation
-        }
-
         // We use a BTree set to make sure we don't have any duplicates and a stable order
         let mut derives: BTreeSet<String> = BTreeSet::new();
         if !self
@@ -2547,13 +2227,6 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         {
             derives.extend(self.r#gen.opts.additional_derive_attributes.to_vec());
         }
-
-        for contrib in enum_contributions.iter() {
-            for derive in contrib.derives.iter() {
-                derives.insert(derive.clone());
-            }
-        }
-
         derives.extend(
             ["Clone", "Copy", "PartialEq", "Eq", "PartialOrd", "Ord"]
                 .into_iter()
@@ -2563,38 +2236,12 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         self.push_str(&derives.into_iter().collect::<Vec<_>>().join(", "));
         self.push_str(")]\n");
         self.push_str(&format!("pub enum {name} {{\n"));
-
-        // Enumerate cases
-        for (case_idx, case) in enum_.cases.iter().enumerate() {
+        for case in enum_.cases.iter() {
             self.rustdoc(&case.docs);
-
-            // Emit visitor-contributed case attributes for enum cases
-            for (target, value) in case.annotations.iter() {
-                if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
-                    // Create a Case from EnumCase for the visitor
-                    let variant_case = Case {
-                        name: case.name.clone(),
-                        docs: case.docs.clone(),
-                        ty: None,
-                        annotations: case.annotations.clone(),
-                    };
-                    if let Some(contrib) =
-                        visitor.visit_variant_case(value, &variant_case, case_idx)
-                    {
-                        for attr in &contrib.attributes {
-                            self.push_str(&format!("{}\n", attr));
-                        }
-                    }
-                }
-            }
-
-            // apply existing case_attr callback
             self.push_str(&case_attr(case));
-
             self.push_str(&case.name.to_upper_camel_case());
             self.push_str(",\n");
         }
-
         self.push_str("}\n");
 
         // Auto-synthesize an implementation of the standard `Error` trait for
@@ -3141,7 +2788,6 @@ impl<'a> {camel}Borrow<'a>{{
     }
 
     fn type_flags(&mut self, _id: TypeId, name: &str, flags: &Flags, docs: &Docs) {
-        // TODO flags might be more difficult to implement the visitor for
         self.src.push_str(&format!(
             "{bitflags}::bitflags! {{\n",
             bitflags = self.r#gen.bitflags_path()
