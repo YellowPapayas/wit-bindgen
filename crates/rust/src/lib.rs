@@ -17,10 +17,8 @@ use wit_bindgen_core::{
 mod bindgen;
 mod interface;
 
-#[cfg(feature = "annotations")]
 pub mod annotation_visitor;
 
-#[cfg(feature = "annotations")]
 pub use annotation_visitor::RustVisitor;
 
 struct InterfaceName {
@@ -60,7 +58,6 @@ struct RustWasm {
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
 
-    #[cfg(feature = "annotations")]
     visitor_map: HashMap<String, Box<dyn RustVisitor>>,
 }
 
@@ -285,20 +282,16 @@ pub struct Opts {
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub async_: AsyncFilterSet,
 
-    #[cfg(feature = "annotations")]
     #[cfg_attr(feature = "serde", serde(skip))]
     #[cfg_attr(feature = "clap", clap(skip))]
     pub visitors: Vec<Box<dyn RustVisitor>>,
 }
 
 impl Opts {
-    pub fn build(
-        #[cfg_attr(not(feature = "annotations"), allow(unused_mut))] mut self,
-    ) -> Box<dyn WorldGenerator> {
+    pub fn build(mut self) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
 
-        #[cfg(feature = "annotations")]
         {
             let mut visitor_map = HashMap::new();
 
