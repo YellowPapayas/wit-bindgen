@@ -214,3 +214,52 @@ fn test_body_prefix_order_preserved() {
     assert_eq!(contrib.body_prefix[1], "let y = 2;");
     assert_eq!(contrib.body_prefix[2], "let z = 3;");
 }
+
+#[test]
+fn test_rust_function_contribution_body_postfix() {
+    let mut contrib = RustFunctionContribution::new();
+    assert!(contrib.is_empty());
+
+    contrib.add_body_postfix("println!(\"Result: {:?}\", result);");
+    contrib.add_body_postfix("let elapsed = start.elapsed();");
+
+    assert!(!contrib.is_empty());
+    assert_eq!(contrib.body_postfix.len(), 2);
+    assert_eq!(contrib.body_postfix[0], "println!(\"Result: {:?}\", result);");
+    assert_eq!(contrib.body_postfix[1], "let elapsed = start.elapsed();");
+}
+
+#[test]
+fn test_body_postfix_order_preserved() {
+    let mut contrib = RustFunctionContribution::new();
+
+    contrib.add_body_postfix("println!(\"First postfix\");");
+    contrib.add_body_postfix("println!(\"Second postfix\");");
+    contrib.add_body_postfix("println!(\"Third postfix\");");
+
+    assert_eq!(contrib.body_postfix[0], "println!(\"First postfix\");");
+    assert_eq!(contrib.body_postfix[1], "println!(\"Second postfix\");");
+    assert_eq!(contrib.body_postfix[2], "println!(\"Third postfix\");");
+}
+
+#[test]
+fn test_rust_function_contribution_prefix_and_postfix() {
+    let mut contrib = RustFunctionContribution::new();
+
+    contrib.add_body_prefix("let start = std::time::Instant::now();");
+    contrib.add_body_postfix("let elapsed = start.elapsed();");
+    contrib.add_body_postfix("println!(\"Function took: {:?}\", elapsed);");
+
+    assert!(!contrib.is_empty());
+    assert_eq!(contrib.body_prefix.len(), 1);
+    assert_eq!(contrib.body_postfix.len(), 2);
+}
+
+#[test]
+fn test_function_contribution_is_empty_with_postfix() {
+    let mut contrib = RustFunctionContribution::new();
+    assert!(contrib.is_empty());
+
+    contrib.add_body_postfix("// cleanup code");
+    assert!(!contrib.is_empty());
+}
