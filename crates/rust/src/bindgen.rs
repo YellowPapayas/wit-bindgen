@@ -874,18 +874,11 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                 let has_body_suffix = self.func_contributions.iter().any(|c| !c.body_suffix.is_empty());
                 let has_result = func.result.is_some();
 
-                // Emit visitor-contributed body prefix code (after lifting, before trait call)
+                // Bind operands to parameter names FIRST, then emit body prefix code
                 let operand_vars: Vec<String> = {
-                    for contrib in self.func_contributions {
-                        for code in &contrib.body_prefix {
-                            self.src.push_str(code);
-                            self.src.push_str("\n");
-                        }
-                    }
-
                     // Assign the lifted values (WASM i32 -> Rust type) to the proper parameter names
                     // so the prefix code can access them by the name defined in the WIT file
-                    operands
+                    let vars: Vec<String> = operands
                         .iter()
                         .enumerate()
                         .map(|(i, operand)| {
@@ -896,7 +889,17 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                             uwriteln!(self.src, "let {} = {};", param_name, operand);
                             param_name
                         })
-                        .collect()
+                        .collect();
+
+                    // NOW emit visitor-contributed body prefix code (after binding params, before trait call)
+                    for contrib in self.func_contributions {
+                        for code in &contrib.body_prefix {
+                            self.src.push_str(code);
+                            self.src.push_str("\n");
+                        }
+                    }
+
+                    vars
                 };
 
                 // If we have body_suffix and a result, capture it in a temp variable
