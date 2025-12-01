@@ -41,7 +41,7 @@ pub trait Visitor {
     ) -> Option<Self::TypeContribution> {
         None
     }
-    
+
     #[allow(unused)]
     fn visit_variant(
         &mut self,
@@ -51,7 +51,7 @@ pub trait Visitor {
     ) -> Option<Self::TypeContribution> {
         None
     }
-    
+
     #[allow(unused)]
     fn visit_enum(
         &mut self,

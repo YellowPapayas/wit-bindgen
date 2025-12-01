@@ -427,11 +427,7 @@ macro_rules! {macro_name} {{
                 .map(|v| v.as_slice())
                 .unwrap_or(&[]);
 
-            self.generate_guest_import(
-                func,
-                interface,
-                contributions,
-            );
+            self.generate_guest_import(func, interface, contributions);
         }
     }
 
@@ -869,13 +865,7 @@ pub mod vtable{ordinal} {{
     }
 
     fn lower_to_memory(&mut self, address: &str, value: &str, ty: &Type, module: &str) -> String {
-        let mut f = FunctionBindgen::new(
-            self,
-            Vec::new(),
-            module,
-            true,
-            &[],
-        );
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
         abi::lower_to_memory(f.r#gen.resolve, &mut f, address.into(), value.into(), ty);
         format!("unsafe {{ {} }}", String::from(f.src))
     }
@@ -887,13 +877,7 @@ pub mod vtable{ordinal} {{
         indirect: bool,
         module: &str,
     ) -> String {
-        let mut f = FunctionBindgen::new(
-            self,
-            Vec::new(),
-            module,
-            true,
-            &[],
-        );
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
         abi::deallocate_lists_in_types(f.r#gen.resolve, types, operands, indirect, &mut f);
         format!("unsafe {{ {} }}", String::from(f.src))
     }
@@ -905,25 +889,13 @@ pub mod vtable{ordinal} {{
         indirect: bool,
         module: &str,
     ) -> String {
-        let mut f = FunctionBindgen::new(
-            self,
-            Vec::new(),
-            module,
-            true,
-            &[],
-        );
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
         abi::deallocate_lists_and_own_in_types(f.r#gen.resolve, types, operands, indirect, &mut f);
         format!("unsafe {{ {} }}", String::from(f.src))
     }
 
     fn lift_from_memory(&mut self, address: &str, ty: &Type, module: &str) -> String {
-        let mut f = FunctionBindgen::new(
-            self,
-            Vec::new(),
-            module,
-            true,
-            &[],
-        );
+        let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
         let result = abi::lift_from_memory(f.r#gen.resolve, &mut f, address.into(), ty);
         format!("unsafe {{ {}\n{result} }}", String::from(f.src))
     }
@@ -934,13 +906,7 @@ pub mod vtable{ordinal} {{
         func: &Function,
         params: Vec<String>,
     ) {
-        let mut f = FunctionBindgen::new(
-            self,
-            params,
-            module,
-            false,
-            &[],
-        );
+        let mut f = FunctionBindgen::new(self, params, module, false, &[]);
         abi::call(
             f.r#gen.resolve,
             AbiVariant::GuestImport,
@@ -1156,13 +1122,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             }
             lowers.push("ParamsLower(_ptr,)".to_string());
         } else {
-            let mut f = FunctionBindgen::new(
-                self,
-                Vec::new(),
-                module,
-                true,
-                &[],
-            );
+            let mut f = FunctionBindgen::new(self, Vec::new(), module, true, &[]);
             let mut results = Vec::new();
             for (i, (_, ty)) in func.params.iter().enumerate() {
                 let name = format!("_lower{i}");
@@ -1336,13 +1296,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             let params = self.print_post_return_sig(func);
             self.src.push_str("{ unsafe {\n");
 
-            let mut f = FunctionBindgen::new(
-                self,
-                params,
-                self.wasm_import_module,
-                false,
-                &[],
-            );
+            let mut f = FunctionBindgen::new(self, params, self.wasm_import_module, false, &[]);
             abi::post_return(f.r#gen.resolve, func, &mut f);
             let FunctionBindgen {
                 needs_cleanup_list,

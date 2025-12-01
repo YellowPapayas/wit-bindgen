@@ -869,7 +869,7 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                     self.src.push_str(&decl);
                 }
                 self.push_str(&prev_src);
-                
+
                 // Emit visitor-contributed body prefix code (after lifting, before trait call)
                 let operand_vars: Vec<String> = {
                     for contrib in self.func_contributions {
@@ -894,7 +894,7 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                         })
                         .collect()
                 };
-                
+
                 let constructor_type = match &func.kind {
                     FunctionKind::Freestanding | FunctionKind::AsyncFreestanding => {
                         self.push_str(&format!("T::{}", to_rust_ident(func.item_name())));
