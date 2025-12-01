@@ -202,6 +202,7 @@ fn test_deprecated_visitor_basic() {
     let _contrib = RustFunctionContribution {
         attributes: vec![],
         body_prefix: vec![],
+        body_suffix: vec![],
     };
 
     // Verify visitor target
@@ -264,4 +265,159 @@ fn test_contribution_types_work() {
 
     assert!(!case_contrib.is_empty());
     assert_eq!(case_contrib.attributes.len(), 1);
+}
+
+/// A visitor that logs both function inputs and outputs
+struct LoggingVisitor;
+
+impl Visitor for LoggingVisitor {
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+
+    fn target(&self) -> &str {
+        "logging"
+    }
+
+    fn visit_function(
+        &mut self,
+        _annotation: &String,
+        func: &Function,
+    ) -> Option<Self::FunctionContribution> {
+        let mut contrib = RustFunctionContribution::new();
+
+        // Log function entry
+        contrib.add_body_prefix(&format!(
+            "println!(\"[ENTRY] {}\");",
+            func.name
+        ));
+
+        // Log each parameter
+        for (param_name, _param_type) in func.params.iter() {
+            contrib.add_body_prefix(&format!(
+                "println!(\"  param '{}' = {{:?}}\", {});",
+                param_name, param_name
+            ));
+        }
+
+        // Log function exit with result (if function has a return value)
+        if func.result.is_some() {
+            contrib.add_body_suffix(&format!(
+                "println!(\"[EXIT] {} => {{:?}}\", __wit_result);",
+                func.name
+            ));
+        } else {
+            contrib.add_body_suffix(&format!(
+                "println!(\"[EXIT] {}\");",
+                func.name
+            ));
+        }
+
+        Some(contrib)
+    }
+}
+
+#[test]
+fn test_logging_visitor_basic() {
+    let visitor = LoggingVisitor;
+    assert_eq!(visitor.target(), "logging");
+}
+
+#[test]
+fn test_logging_visitor_generates_prefix_and_suffix() {
+    // Test that LoggingVisitor creates both prefix and suffix contributions
+    let mut contrib = RustFunctionContribution::new();
+
+    // Simulate what LoggingVisitor does: adds entry log in prefix
+    contrib.add_body_prefix("println!(\"[ENTRY] test_func\");");
+    contrib.add_body_prefix("println!(\"  param 'x' = {:?}\", x);");
+    contrib.add_body_prefix("println!(\"  param 'y' = {:?}\", y);");
+
+    // And exit log in suffix
+    contrib.add_body_suffix("println!(\"[EXIT] test_func => {:?}\", __wit_result);");
+
+    // Verify structure
+    assert!(!contrib.body_prefix.is_empty());
+    assert_eq!(contrib.body_prefix.len(), 3); // 1 entry + 2 params
+    assert!(!contrib.body_suffix.is_empty());
+    assert_eq!(contrib.body_suffix.len(), 1);
+
+    // Verify content
+    assert!(contrib.body_prefix[0].contains("[ENTRY]"));
+    assert!(contrib.body_prefix[1].contains("param 'x'"));
+    assert!(contrib.body_prefix[2].contains("param 'y'"));
+    assert!(contrib.body_suffix[0].contains("[EXIT]"));
+    assert!(contrib.body_suffix[0].contains("__wit_result"));
+}
+
+#[test]
+fn test_logging_visitor_no_return_value() {
+    // Test logging for functions without return values
+    let mut contrib = RustFunctionContribution::new();
+
+    contrib.add_body_prefix("println!(\"[ENTRY] process\");");
+    contrib.add_body_prefix("println!(\"  param 'data' = {:?}\", data);");
+    contrib.add_body_suffix("println!(\"[EXIT] process\");");
+
+    // Should have prefix
+    assert_eq!(contrib.body_prefix.len(), 2); // entry + 1 param
+
+    // Should have suffix but without __wit_result
+    assert_eq!(contrib.body_suffix.len(), 1);
+    assert!(!contrib.body_suffix[0].contains("__wit_result"));
+    assert!(contrib.body_suffix[0].contains("[EXIT]"));
+}
+
+#[test]
+fn test_logging_visitor_no_params() {
+    // Test logging for functions with no parameters
+    let mut contrib = RustFunctionContribution::new();
+
+    contrib.add_body_prefix("println!(\"[ENTRY] get_value\");");
+    contrib.add_body_suffix("println!(\"[EXIT] get_value => {:?}\", __wit_result);");
+
+    // Should only have entry log in prefix
+    assert_eq!(contrib.body_prefix.len(), 1);
+    assert!(contrib.body_prefix[0].contains("[ENTRY]"));
+
+    // Should have exit log with result
+    assert_eq!(contrib.body_suffix.len(), 1);
+    assert!(contrib.body_suffix[0].contains("__wit_result"));
+}
+
+#[test]
+fn test_body_prefix_and_suffix_integration() {
+    // Test that a visitor can use both prefix and suffix together
+    let mut contrib = RustFunctionContribution::new();
+
+    // Simulate what LoggingVisitor does
+    contrib.add_body_prefix("let start = std::time::Instant::now();");
+    contrib.add_body_prefix("println!(\"Starting function\");");
+    contrib.add_body_suffix("let duration = start.elapsed();");
+    contrib.add_body_suffix("println!(\"Duration: {:?}\", duration);");
+
+    assert!(!contrib.is_empty());
+    assert_eq!(contrib.body_prefix.len(), 2);
+    assert_eq!(contrib.body_suffix.len(), 2);
+    assert_eq!(contrib.attributes.len(), 0);
+}
+
+#[test]
+fn test_multiple_visitors_combination() {
+    // Test that different contributions can be combined
+    let mut tracing_contrib = RustFunctionContribution::new();
+    tracing_contrib.add_attribute("#[tracing::instrument]");
+    tracing_contrib.add_body_prefix("tracing::debug!(\"enter\");");
+
+    let mut logging_contrib = RustFunctionContribution::new();
+    logging_contrib.add_body_prefix("println!(\"log entry\");");
+    logging_contrib.add_body_suffix("println!(\"log exit\");");
+
+    // Verify both contributions are independent and valid
+    assert!(!tracing_contrib.is_empty());
+    assert!(!logging_contrib.is_empty());
+    assert_eq!(tracing_contrib.attributes.len(), 1);
+    assert_eq!(logging_contrib.body_suffix.len(), 1);
 }

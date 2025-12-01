@@ -214,3 +214,73 @@ fn test_body_prefix_order_preserved() {
     assert_eq!(contrib.body_prefix[1], "let y = 2;");
     assert_eq!(contrib.body_prefix[2], "let z = 3;");
 }
+
+#[test]
+fn test_rust_function_contribution_body_suffix() {
+    let mut contrib = RustFunctionContribution::new();
+    assert!(contrib.is_empty());
+
+    contrib.add_body_suffix("println!(\"Function returned: {:?}\", result);");
+    contrib.add_body_suffix("let duration = start.elapsed();");
+
+    assert!(!contrib.is_empty());
+    assert_eq!(contrib.body_suffix.len(), 2);
+    assert_eq!(contrib.body_suffix[0], "println!(\"Function returned: {:?}\", result);");
+    assert_eq!(contrib.body_suffix[1], "let duration = start.elapsed();");
+}
+
+#[test]
+fn test_body_suffix_order_preserved() {
+    let mut contrib = RustFunctionContribution::new();
+
+    contrib.add_body_suffix("println!(\"Result: {:?}\", __wit_result);");
+    contrib.add_body_suffix("log::info!(\"Completed\");");
+    contrib.add_body_suffix("metrics::record();");
+
+    assert_eq!(contrib.body_suffix[0], "println!(\"Result: {:?}\", __wit_result);");
+    assert_eq!(contrib.body_suffix[1], "log::info!(\"Completed\");");
+    assert_eq!(contrib.body_suffix[2], "metrics::record();");
+}
+
+#[test]
+fn test_function_contribution_prefix_and_suffix() {
+    let mut contrib = RustFunctionContribution::new();
+    assert!(contrib.is_empty());
+
+    contrib.add_body_prefix("let start = std::time::Instant::now();");
+    contrib.add_body_suffix("let duration = start.elapsed();");
+    contrib.add_body_suffix("println!(\"Took {:?}\", duration);");
+
+    assert!(!contrib.is_empty());
+    assert_eq!(contrib.body_prefix.len(), 1);
+    assert_eq!(contrib.body_suffix.len(), 2);
+}
+
+#[test]
+fn test_function_contribution_all_fields() {
+    let mut contrib = RustFunctionContribution::new();
+
+    contrib.add_attribute("#[tracing::instrument]");
+    contrib.add_body_prefix("tracing::debug!(\"Starting\");");
+    contrib.add_body_suffix("tracing::debug!(\"Finished\");");
+
+    assert!(!contrib.is_empty());
+    assert_eq!(contrib.attributes.len(), 1);
+    assert_eq!(contrib.body_prefix.len(), 1);
+    assert_eq!(contrib.body_suffix.len(), 1);
+}
+
+#[test]
+fn test_function_contribution_is_empty_with_suffix() {
+    let mut contrib = RustFunctionContribution::new();
+    assert!(contrib.is_empty());
+
+    contrib.add_body_suffix("log::trace!(\"exit\");");
+    assert!(!contrib.is_empty());
+
+    let mut contrib2 = RustFunctionContribution::new();
+    contrib2.add_attribute("#[inline]");
+    contrib2.add_body_prefix("// entry");
+    contrib2.add_body_suffix("// exit");
+    assert!(!contrib2.is_empty());
+}
