@@ -16,7 +16,7 @@ mod async_;
 pub use async_::AsyncFilterSet;
 
 pub mod visitor;
-pub use visitor::Visitor;
+pub use visitor::{ContributionTypes, Visitor};
 
 #[derive(Default, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Direction {
