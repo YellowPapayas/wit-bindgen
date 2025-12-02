@@ -3,6 +3,7 @@ use anyhow::{bail, Result};
 use core::panic;
 use heck::*;
 use indexmap::{IndexMap, IndexSet};
+use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{self, Write as _};
 use std::mem;
@@ -15,6 +16,9 @@ use wit_bindgen_core::{
 
 mod bindgen;
 mod interface;
+
+pub mod annotation_visitor;
+pub use annotation_visitor::RustVisitor;
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
@@ -52,6 +56,8 @@ struct RustWasm {
 
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
+
+    visitor_map: HashMap<String, Box<dyn RustVisitor>>,
 }
 
 #[derive(Default)]
@@ -138,7 +144,7 @@ fn parse_with(s: &str) -> Result<(String, WithOption), String> {
     Ok((k.to_string(), v))
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default)]
 #[cfg_attr(feature = "clap", derive(clap::Parser))]
 #[cfg_attr(
     feature = "serde",
@@ -235,7 +241,7 @@ pub struct Opts {
     #[cfg_attr(feature = "clap", arg(long))]
     pub generate_all: bool,
 
-    /// Add the specified suffix to the name of the custome section containing
+    /// Add the specified suffix to the name of the custom section containing
     /// the component type.
     #[cfg_attr(feature = "clap", arg(long, value_name = "STRING"))]
     pub type_section_suffix: Option<String>,
@@ -274,12 +280,30 @@ pub struct Opts {
     #[cfg_attr(feature = "clap", clap(flatten))]
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub async_: AsyncFilterSet,
+
+    #[cfg_attr(feature = "serde", serde(skip))]
+    #[cfg_attr(feature = "clap", clap(skip))]
+    pub visitors: Vec<Box<dyn RustVisitor>>,
 }
 
 impl Opts {
-    pub fn build(self) -> Box<dyn WorldGenerator> {
+    pub fn build(mut self) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
+
+        let mut visitor_map = HashMap::new();
+
+        for visitor in mem::take(&mut self.visitors) {
+            match visitor_map.entry(visitor.target().to_string()) {
+                Entry::Occupied(_) => panic!(
+                    "Cannot accept two visitors with the same target of {}",
+                    visitor.target().to_string()
+                ),
+                Entry::Vacant(vacant_entry) => vacant_entry.insert(visitor),
+            };
+        }
+        r.visitor_map = visitor_map;
+            
         r.opts = self;
         Box::new(r)
     }
