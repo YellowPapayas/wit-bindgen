@@ -1,7 +1,11 @@
 // Contains 5 example visitor implementations and integration tests that verify visitor targets,
 // contribution types, and behavior
 
+<<<<<<< HEAD
 #![cfg(feature = "visitor")]
+=======
+#![cfg(feature = "annotations")]
+>>>>>>> main
 
 use wit_bindgen_core::wit_parser::*;
 use wit_bindgen_core::Visitor;
@@ -13,7 +17,15 @@ use wit_bindgen_rust::annotation_visitor::*;
 struct DeprecatedVisitor;
 
 impl Visitor for DeprecatedVisitor {
+<<<<<<< HEAD
     type Contributions = RustContributions;
+=======
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+>>>>>>> main
 
     fn target(&self) -> &str {
         "deprecated"
@@ -23,7 +35,11 @@ impl Visitor for DeprecatedVisitor {
         &mut self,
         annotation: &String,
         _func: &Function,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::Function> {
+=======
+    ) -> Option<Self::FunctionContribution> {
+>>>>>>> main
         let mut contrib = RustFunctionContribution::new();
         if annotation.is_empty() {
             contrib.add_attribute("#[deprecated]");
@@ -38,7 +54,11 @@ impl Visitor for DeprecatedVisitor {
         annotation: &String,
         _case: &Case,
         _case_index: usize,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::VariantCase> {
+=======
+    ) -> Option<Self::VariantCaseContribution> {
+>>>>>>> main
         let mut contrib = RustVariantCaseContribution::new();
         if annotation.is_empty() {
             contrib.add_attribute("#[deprecated]");
@@ -53,7 +73,15 @@ impl Visitor for DeprecatedVisitor {
 struct TracingVisitor;
 
 impl Visitor for TracingVisitor {
+<<<<<<< HEAD
     type Contributions = RustContributions;
+=======
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+>>>>>>> main
 
     fn target(&self) -> &str {
         "trace"
@@ -63,7 +91,11 @@ impl Visitor for TracingVisitor {
         &mut self,
         annotation: &String,
         func: &Function,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::Function> {
+=======
+    ) -> Option<Self::FunctionContribution> {
+>>>>>>> main
         let mut contrib = RustFunctionContribution::new();
         contrib.add_attribute("#[tracing::instrument]");
 
@@ -84,7 +116,11 @@ impl Visitor for TracingVisitor {
         &mut self,
         _annotation: &String,
         _interface: Option<&Interface>,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::Module> {
+=======
+    ) -> Option<Self::ModuleContribution> {
+>>>>>>> main
         let mut contrib = RustModuleContribution::new();
         contrib.add_use("use tracing");
         Some(contrib)
@@ -95,7 +131,15 @@ impl Visitor for TracingVisitor {
 struct ValidateVisitor;
 
 impl Visitor for ValidateVisitor {
+<<<<<<< HEAD
     type Contributions = RustContributions;
+=======
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+>>>>>>> main
 
     fn target(&self) -> &str {
         "validate"
@@ -105,7 +149,11 @@ impl Visitor for ValidateVisitor {
         &mut self,
         annotation: &String,
         _func: &Function,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::Function> {
+=======
+    ) -> Option<Self::FunctionContribution> {
+>>>>>>> main
         let mut contrib = RustFunctionContribution::new();
         if !annotation.is_empty() {
             contrib.add_body_prefix(&format!("assert!({}, \"Validation failed\");", annotation));
@@ -118,7 +166,15 @@ impl Visitor for ValidateVisitor {
 struct SinceVisitor;
 
 impl Visitor for SinceVisitor {
+<<<<<<< HEAD
     type Contributions = RustContributions;
+=======
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+>>>>>>> main
 
     fn target(&self) -> &str {
         "since"
@@ -128,7 +184,11 @@ impl Visitor for SinceVisitor {
         &mut self,
         annotation: &String,
         _func: &Function,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::Function> {
+=======
+    ) -> Option<Self::FunctionContribution> {
+>>>>>>> main
         let mut contrib = RustFunctionContribution::new();
         contrib.add_attribute(&format!("#[doc = \"Since version: {}\"]", annotation));
         Some(contrib)
@@ -138,7 +198,11 @@ impl Visitor for SinceVisitor {
         &mut self,
         annotation: &String,
         _interface: Option<&Interface>,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::Module> {
+=======
+    ) -> Option<Self::ModuleContribution> {
+>>>>>>> main
         let mut contrib = RustModuleContribution::new();
         contrib.add_code(&format!(
             "// Interface available since version: {}",
@@ -152,7 +216,15 @@ impl Visitor for SinceVisitor {
 struct DeriveVisitor;
 
 impl Visitor for DeriveVisitor {
+<<<<<<< HEAD
     type Contributions = RustContributions;
+=======
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+>>>>>>> main
 
     fn target(&self) -> &str {
         "derive"
@@ -163,7 +235,11 @@ impl Visitor for DeriveVisitor {
         annotation: &String,
         _enum: &Enum,
         _type_id: TypeId,
+<<<<<<< HEAD
     ) -> Option<<Self::Contributions as wit_bindgen_core::ContributionTypes>::Type> {
+=======
+    ) -> Option<Self::TypeContribution> {
+>>>>>>> main
         let mut contrib = RustTypeContribution::new();
         for derive in annotation.split(',').map(|s| s.trim()) {
             if !derive.is_empty() {

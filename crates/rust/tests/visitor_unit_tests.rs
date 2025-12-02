@@ -1,6 +1,10 @@
 // Tests all contribution types for Rust visitors
 
+<<<<<<< HEAD
 #![cfg(feature = "visitor")]
+=======
+#![cfg(feature = "annotations")]
+>>>>>>> main
 
 use wit_bindgen_rust::annotation_visitor::*;
 
