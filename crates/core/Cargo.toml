@@ -25,4 +25,3 @@ clap = { workspace = true, optional = true }
 [features]
 serde = ['dep:serde']
 clap = ['dep:clap']
-visitor = []

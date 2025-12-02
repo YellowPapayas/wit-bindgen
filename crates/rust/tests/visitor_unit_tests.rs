@@ -1,6 +1,6 @@
 // Tests all contribution types for Rust visitors
 
-#![cfg(feature = "visitor")]
+#![cfg(feature = "annotations")]
 
 use wit_bindgen_rust::annotation_visitor::*;
 

@@ -7,23 +7,28 @@ pub use contribution_types::{
 };
 
 // Rust-specific visitor trait
-pub trait RustVisitor: Visitor<
+pub trait RustVisitor:
+    Visitor<
     TypeContribution = RustTypeContribution,
     FieldContribution = RustFieldContribution,
     VariantCaseContribution = RustVariantCaseContribution,
     FunctionContribution = RustFunctionContribution,
     ModuleContribution = RustModuleContribution,
-> {}
+>
+{
+}
 
 // any type that implements Visitor with the right associated types automatically implements RustVisitor
-impl<T> RustVisitor for T where T: Visitor<
-    TypeContribution = RustTypeContribution,
-    FieldContribution = RustFieldContribution,
-    VariantCaseContribution = RustVariantCaseContribution,
-    FunctionContribution = RustFunctionContribution,
-    ModuleContribution = RustModuleContribution,
+impl<T> RustVisitor for T where
+    T: Visitor<
+        TypeContribution = RustTypeContribution,
+        FieldContribution = RustFieldContribution,
+        VariantCaseContribution = RustVariantCaseContribution,
+        FunctionContribution = RustFunctionContribution,
+        ModuleContribution = RustModuleContribution,
     >
-{}
+{
+}
 
 #[macro_export]
 macro_rules! rust_visitor {

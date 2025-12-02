@@ -1,7 +1,7 @@
 // Contains 5 example visitor implementations and integration tests that verify visitor targets,
 // contribution types, and behavior
 
-#![cfg(feature = "visitor")]
+#![cfg(feature = "annotations")]
 
 use wit_bindgen_core::wit_parser::*;
 use wit_bindgen_core::Visitor;
@@ -120,10 +120,7 @@ impl Visitor for ValidateVisitor {
     ) -> Option<Self::FunctionContribution> {
         let mut contrib = RustFunctionContribution::new();
         if !annotation.is_empty() {
-            contrib.add_body_prefix(&format!(
-                "assert!({}, \"Validation failed\");",
-                annotation
-            ));
+            contrib.add_body_prefix(&format!("assert!({}, \"Validation failed\");", annotation));
         }
         Some(contrib)
     }

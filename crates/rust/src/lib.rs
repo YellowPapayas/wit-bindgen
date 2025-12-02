@@ -3,8 +3,8 @@ use anyhow::{bail, Result};
 use core::panic;
 use heck::*;
 use indexmap::{IndexMap, IndexSet};
-use std::collections::{BTreeMap, HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::{self, Write as _};
 use std::mem;
 use std::str::FromStr;
@@ -17,11 +17,8 @@ use wit_bindgen_core::{
 mod bindgen;
 mod interface;
 
-#[cfg(feature = "visitor")]
 pub mod annotation_visitor;
-
-#[cfg(feature = "visitor")]
-pub use annotation_visitor::{RustVisitor};
+pub use annotation_visitor::RustVisitor;
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
@@ -60,7 +57,6 @@ struct RustWasm {
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
 
-    #[cfg(feature = "visitor")]
     visitor_map: HashMap<String, Box<dyn RustVisitor>>,
 }
 
@@ -285,30 +281,29 @@ pub struct Opts {
     #[cfg_attr(feature = "serde", serde(flatten))]
     pub async_: AsyncFilterSet,
 
-    #[cfg(feature = "visitor")]
     #[cfg_attr(feature = "serde", serde(skip))]
     #[cfg_attr(feature = "clap", clap(skip))]
     pub visitors: Vec<Box<dyn RustVisitor>>,
 }
 
 impl Opts {
-    pub fn build(#[cfg_attr(not(feature = "visitor"), allow(unused_mut))] mut self) -> Box<dyn WorldGenerator> {
+    pub fn build(mut self) -> Box<dyn WorldGenerator> {
         let mut r = RustWasm::new();
         r.skip = self.skip.iter().cloned().collect();
 
-        #[cfg(feature = "visitor")]
-        {
-            let mut visitor_map = HashMap::new();
-        
-            for visitor in mem::take(&mut self.visitors) {
-                match visitor_map.entry(visitor.target().to_string()) {
-                    Entry::Occupied(_) => panic!("Cannot accept two visitors with the same target of {}", visitor.target().to_string()),
-                    Entry::Vacant(vacant_entry) => vacant_entry.insert(visitor),
-                };
-            }
-            r.visitor_map = visitor_map;
-        }
+        let mut visitor_map = HashMap::new();
 
+        for visitor in mem::take(&mut self.visitors) {
+            match visitor_map.entry(visitor.target().to_string()) {
+                Entry::Occupied(_) => panic!(
+                    "Cannot accept two visitors with the same target of {}",
+                    visitor.target().to_string()
+                ),
+                Entry::Vacant(vacant_entry) => vacant_entry.insert(visitor),
+            };
+        }
+        r.visitor_map = visitor_map;
+            
         r.opts = self;
         Box::new(r)
     }
