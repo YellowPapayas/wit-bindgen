@@ -850,6 +850,15 @@ pub mod vtable{ordinal} {{
             }
         }
 
+        // Check if we need to inject body_suffix code
+        let has_suffix = func_contributions.iter().any(|c| !c.body_suffix.is_empty());
+        let has_return = func.result.is_some();
+
+        // If we have suffix code and a return value, capture the result
+        if has_suffix && has_return {
+            self.src.push_str("let __wit_result = ");
+        }
+
         self.src.push_str("unsafe {\n");
 
         if async_ {
@@ -859,6 +868,20 @@ pub mod vtable{ordinal} {{
         }
 
         self.src.push_str("}\n");
+
+        // Emit visitor-contributed body suffix code
+        if has_suffix {
+            self.src.push_str(";\n");
+            for contrib in func_contributions {
+                for code in &contrib.body_suffix {
+                    uwriteln!(self.src, "    {}", code);
+                }
+            }
+            if has_return {
+                self.src.push_str("__wit_result\n");
+            }
+        }
+
         self.src.push_str("}\n");
 
         if func.kind.resource().is_some() {

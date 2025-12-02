@@ -1,8 +1,6 @@
 // Contains 5 example visitor implementations and integration tests that verify visitor targets,
 // contribution types, and behavior
 
-#![cfg(feature = "annotations")]
-
 use wit_bindgen_core::wit_parser::*;
 use wit_bindgen_core::Visitor;
 use wit_bindgen_rust::annotation_visitor::*;
@@ -194,6 +192,49 @@ impl Visitor for DeriveVisitor {
     }
 }
 
+/// A visitor that adds comprehensive logging (both entry and exit)
+struct LoggingVisitor;
+
+impl Visitor for LoggingVisitor {
+    type TypeContribution = RustTypeContribution;
+    type FieldContribution = RustFieldContribution;
+    type VariantCaseContribution = RustVariantCaseContribution;
+    type FunctionContribution = RustFunctionContribution;
+    type ModuleContribution = RustModuleContribution;
+
+    fn target(&self) -> &str {
+        "logging"
+    }
+
+    fn visit_function(
+        &mut self,
+        _annotation: &String,
+        func: &Function,
+    ) -> Option<Self::FunctionContribution> {
+        let mut contrib = RustFunctionContribution::new();
+
+        // Log function entry
+        contrib.add_body_prefix(&format!("println!(\"[ENTRY] {}\");", func.name));
+
+        // Log each parameter
+        for (param_name, _) in func.params.iter() {
+            contrib.add_body_prefix(&format!(
+                "println!(\"  {} = {{:?}}\", {});",
+                param_name, param_name
+            ));
+        }
+
+        // Log function exit with return value if present
+        if func.result.is_some() {
+            contrib.add_body_suffix("println!(\"[EXIT] {} => {:?}\", __wit_result);");
+        } else {
+            contrib.add_body_suffix("println!(\"[EXIT] {}\");");
+        }
+
+        Some(contrib)
+    }
+}
+
 #[test]
 fn test_deprecated_visitor_basic() {
     let visitor = DeprecatedVisitor;
@@ -202,6 +243,7 @@ fn test_deprecated_visitor_basic() {
     let _contrib = RustFunctionContribution {
         attributes: vec![],
         body_prefix: vec![],
+        body_suffix: vec![],
     };
 
     // Verify visitor target
@@ -219,6 +261,7 @@ fn test_visitor_targets() {
     assert_eq!(ValidateVisitor.target(), "validate");
     assert_eq!(SinceVisitor.target(), "since");
     assert_eq!(DeriveVisitor.target(), "derive");
+    assert_eq!(LoggingVisitor.target(), "logging");
 }
 
 #[test]
@@ -229,10 +272,12 @@ fn test_contribution_types_work() {
 
     func_contrib.add_attribute("#[deprecated]");
     func_contrib.add_body_prefix("println!(\"test\");");
+    func_contrib.add_body_suffix("println!(\"exit\");");
 
     assert!(!func_contrib.is_empty());
     assert_eq!(func_contrib.attributes.len(), 1);
     assert_eq!(func_contrib.body_prefix.len(), 1);
+    assert_eq!(func_contrib.body_suffix.len(), 1);
 
     // Test RustModuleContribution
     let mut mod_contrib = RustModuleContribution::new();
@@ -264,4 +309,34 @@ fn test_contribution_types_work() {
 
     assert!(!case_contrib.is_empty());
     assert_eq!(case_contrib.attributes.len(), 1);
+}
+
+#[test]
+fn test_body_suffix_logging() {
+    // Create a simple function for testing
+    let func = Function {
+        name: "test_func".to_string(),
+        params: vec![("input".to_string(), Type::U32)],
+        result: Some(Type::U32),
+        kind: FunctionKind::Freestanding,
+        docs: Default::default(),
+        stability: Default::default(),
+        annotations: Default::default(),
+    };
+
+    let mut visitor = LoggingVisitor;
+    let contrib = visitor.visit_function(&String::new(), &func);
+
+    assert!(contrib.is_some());
+    let contrib = contrib.unwrap();
+
+    // Should have both prefix and suffix
+    assert!(!contrib.body_prefix.is_empty());
+    assert!(!contrib.body_suffix.is_empty());
+
+    // Verify the logging includes function entry
+    assert!(contrib.body_prefix.iter().any(|s| s.contains("[ENTRY]")));
+
+    // Verify the logging includes function exit
+    assert!(contrib.body_suffix.iter().any(|s| s.contains("[EXIT]")));
 }
