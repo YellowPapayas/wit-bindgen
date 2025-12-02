@@ -850,6 +850,12 @@ pub mod vtable{ordinal} {{
             }
         }
 
+        // If function has a return value, capture it for body_suffix access
+        let has_return = func.result.is_some();
+        if has_return {
+            self.src.push_str("let func_return = ");
+        }
+
         self.src.push_str("unsafe {\n");
 
         if async_ {
@@ -859,6 +865,20 @@ pub mod vtable{ordinal} {{
         }
 
         self.src.push_str("}\n");
+
+        // Emit visitor-contributed body suffix code
+        if has_return {
+            self.src.push_str(";\n");
+        }
+        for contrib in func_contributions {
+            for code in &contrib.body_suffix {
+                uwriteln!(self.src, "    {}", code);
+            }
+        }
+        if has_return {
+            self.src.push_str("func_return\n");
+        }
+
         self.src.push_str("}\n");
 
         if func.kind.resource().is_some() {

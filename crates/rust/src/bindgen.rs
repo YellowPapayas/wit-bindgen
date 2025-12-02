@@ -984,18 +984,45 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                 }
             }
 
-            Instruction::Return { amt, .. } => match amt {
-                0 => {}
-                1 => {
-                    self.push_str(&operands[0]);
-                    self.push_str("\n");
+            Instruction::Return { amt, .. } => {
+                match amt {
+                    0 => {
+                        // No return value, but still emit suffix code
+                        for contrib in self.func_contributions {
+                            for code in &contrib.body_suffix {
+                                self.src.push_str(code);
+                                self.src.push_str("\n");
+                            }
+                        }
+                    }
+                    1 => {
+                        // Bind result to func_return, emit suffix, then return it
+                        self.push_str("let func_return = ");
+                        self.push_str(&operands[0]);
+                        self.push_str(";\n");
+                        for contrib in self.func_contributions {
+                            for code in &contrib.body_suffix {
+                                self.src.push_str(code);
+                                self.src.push_str("\n");
+                            }
+                        }
+                        self.push_str("func_return\n");
+                    }
+                    _ => {
+                        // Bind tuple result to func_return, emit suffix, then return it
+                        self.push_str("let func_return = (");
+                        self.push_str(&operands.join(", "));
+                        self.push_str(");\n");
+                        for contrib in self.func_contributions {
+                            for code in &contrib.body_suffix {
+                                self.src.push_str(code);
+                                self.src.push_str("\n");
+                            }
+                        }
+                        self.push_str("func_return\n");
+                    }
                 }
-                _ => {
-                    self.push_str("(");
-                    self.push_str(&operands.join(", "));
-                    self.push_str(")\n");
-                }
-            },
+            }
 
             Instruction::I32Load { offset } => {
                 let tmp = self.tmp();
