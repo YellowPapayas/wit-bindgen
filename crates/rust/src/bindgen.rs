@@ -985,57 +985,41 @@ impl Bindgen for FunctionBindgen<'_, '_> {
             }
 
             Instruction::Return { amt, .. } => {
-                // Check if we need to inject body_suffix code
-                let has_suffix = self.func_contributions.iter().any(|c| !c.body_suffix.is_empty());
-
                 match amt {
                     0 => {
-                        // No return value, but still emit suffix if present
-                        if has_suffix {
-                            for contrib in self.func_contributions {
-                                for code in &contrib.body_suffix {
-                                    self.src.push_str(code);
-                                    self.src.push_str("\n");
-                                }
+                        // No return value, but still emit suffix code
+                        for contrib in self.func_contributions {
+                            for code in &contrib.body_suffix {
+                                self.src.push_str(code);
+                                self.src.push_str("\n");
                             }
                         }
                     }
                     1 => {
-                        if has_suffix {
-                            // Bind result to __wit_result, emit suffix, then return it
-                            self.push_str("let __wit_result = ");
-                            self.push_str(&operands[0]);
-                            self.push_str(";\n");
-                            for contrib in self.func_contributions {
-                                for code in &contrib.body_suffix {
-                                    self.src.push_str(code);
-                                    self.src.push_str("\n");
-                                }
+                        // Bind result to func_return, emit suffix, then return it
+                        self.push_str("let func_return = ");
+                        self.push_str(&operands[0]);
+                        self.push_str(";\n");
+                        for contrib in self.func_contributions {
+                            for code in &contrib.body_suffix {
+                                self.src.push_str(code);
+                                self.src.push_str("\n");
                             }
-                            self.push_str("__wit_result\n");
-                        } else {
-                            self.push_str(&operands[0]);
-                            self.push_str("\n");
                         }
+                        self.push_str("func_return\n");
                     }
                     _ => {
-                        if has_suffix {
-                            // Bind tuple result to __wit_result, emit suffix, then return it
-                            self.push_str("let __wit_result = (");
-                            self.push_str(&operands.join(", "));
-                            self.push_str(");\n");
-                            for contrib in self.func_contributions {
-                                for code in &contrib.body_suffix {
-                                    self.src.push_str(code);
-                                    self.src.push_str("\n");
-                                }
+                        // Bind tuple result to func_return, emit suffix, then return it
+                        self.push_str("let func_return = (");
+                        self.push_str(&operands.join(", "));
+                        self.push_str(");\n");
+                        for contrib in self.func_contributions {
+                            for code in &contrib.body_suffix {
+                                self.src.push_str(code);
+                                self.src.push_str("\n");
                             }
-                            self.push_str("__wit_result\n");
-                        } else {
-                            self.push_str("(");
-                            self.push_str(&operands.join(", "));
-                            self.push_str(")\n");
                         }
+                        self.push_str("func_return\n");
                     }
                 }
             }

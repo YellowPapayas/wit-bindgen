@@ -84,7 +84,7 @@ pub struct RustFunctionContribution {
     /// Code to prepend to function body
     pub body_prefix: Vec<String>,
 
-    /// Code to append before function return (can access __wit_result for return value)
+    /// Code to append before function return (can access func_return for return value)
     pub body_suffix: Vec<String>,
 }
 

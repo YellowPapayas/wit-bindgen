@@ -226,7 +226,7 @@ impl Visitor for LoggingVisitor {
 
         // Log function exit with return value if present
         if func.result.is_some() {
-            contrib.add_body_suffix("println!(\"[EXIT] {} => {:?}\", __wit_result);");
+            contrib.add_body_suffix("println!(\"[EXIT] {} => {:?}\", func_return);");
         } else {
             contrib.add_body_suffix("println!(\"[EXIT] {}\");");
         }
