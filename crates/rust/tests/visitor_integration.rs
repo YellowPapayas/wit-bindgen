@@ -176,11 +176,7 @@ impl Visitor for DeriveVisitor {
 struct LoggingVisitor;
 
 impl Visitor for LoggingVisitor {
-    type TypeContribution = RustTypeContribution;
-    type FieldContribution = RustFieldContribution;
-    type VariantCaseContribution = RustVariantCaseContribution;
-    type FunctionContribution = RustFunctionContribution;
-    type ModuleContribution = RustModuleContribution;
+    type Contributions = RustContributions;
 
     fn target(&self) -> &str {
         "logging"
@@ -190,7 +186,7 @@ impl Visitor for LoggingVisitor {
         &mut self,
         _annotation: &String,
         func: &Function,
-    ) -> Option<Self::FunctionContribution> {
+    ) -> Option<RustFunctionContribution> {
         let mut contrib = RustFunctionContribution::new();
 
         // Log function entry
