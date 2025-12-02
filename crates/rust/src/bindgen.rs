@@ -1,3 +1,4 @@
+use crate::annotation_visitor::RustFunctionContribution;
 use crate::{
     classify_constructor_return_type, int_repr, to_rust_ident, ConstructorReturnType, Identifier,
     InterfaceGenerator, RustFlagsRepr,
@@ -21,7 +22,6 @@ pub(super) struct FunctionBindgen<'a, 'b> {
     pub import_return_pointer_area_align: Alignment,
     pub handle_decls: Vec<String>,
     always_owned: bool,
-    #[cfg(feature = "annotations")]
     func_contributions: &'b [crate::annotation_visitor::RustFunctionContribution],
 }
 
@@ -33,8 +33,7 @@ impl<'a, 'b> FunctionBindgen<'a, 'b> {
         params: Vec<String>,
         wasm_import_module: &'b str,
         always_owned: bool,
-        #[cfg(feature = "annotations")]
-        func_contributions: &'b [crate::annotation_visitor::RustFunctionContribution],
+        func_contributions: &'b [RustFunctionContribution],
     ) -> FunctionBindgen<'a, 'b> {
         FunctionBindgen {
             r#gen,
@@ -49,7 +48,6 @@ impl<'a, 'b> FunctionBindgen<'a, 'b> {
             import_return_pointer_area_align: Default::default(),
             handle_decls: Vec::new(),
             always_owned,
-            #[cfg(feature = "annotations")]
             func_contributions,
         }
     }
@@ -874,7 +872,6 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                 self.push_str(&prev_src);
                 
                 // Emit visitor-contributed body prefix code (after lifting, before trait call)
-                #[cfg(feature = "annotations")]
                 let operand_vars: Vec<String> = {
                     for contrib in self.func_contributions {
                         for code in &contrib.body_prefix {
@@ -898,9 +895,6 @@ impl Bindgen for FunctionBindgen<'_, '_> {
                         })
                         .collect()
                 };
-                
-                #[cfg(not(feature = "annotations"))]
-                let operand_vars: Vec<String> = Vec::new();
                 
                 let constructor_type = match &func.kind {
                     FunctionKind::Freestanding | FunctionKind::AsyncFreestanding => {
