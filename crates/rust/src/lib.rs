@@ -57,7 +57,7 @@ struct RustWasm {
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
 
-    visitor_map: HashMap<String, Box<dyn RustVisitor>>,
+    visitor_map: HashMap<String, Box<RustVisitor>>,
 }
 
 #[derive(Default)]
@@ -283,7 +283,7 @@ pub struct Opts {
 
     #[cfg_attr(feature = "serde", serde(skip))]
     #[cfg_attr(feature = "clap", clap(skip))]
-    pub visitors: Vec<Box<dyn RustVisitor>>,
+    pub visitors: Vec<Box<RustVisitor>>,
 }
 
 impl Opts {

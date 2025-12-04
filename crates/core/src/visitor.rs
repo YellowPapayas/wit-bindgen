@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use wit_parser::*;
 
 /// Trait that groups related contribution types together.
@@ -140,5 +142,21 @@ pub trait Visitor {
         world: &World,
     ) -> Option<<Self::Contributions as ContributionTypes>::Module> {
         None
+    }
+}
+
+pub trait FindVisitorWithWarning<T: ?Sized> {
+    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<T>>;
+}
+
+impl<T: ?Sized> FindVisitorWithWarning<T> for HashMap<String, Box<T>> {
+    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<T>> {
+        let result = self.get_mut(target);
+
+        if result.is_none() {
+            println!("cargo::warning=Warning: No visitor registered for annotation target '{}'", target);
+        }
+
+        result
     }
 }
