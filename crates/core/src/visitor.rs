@@ -154,7 +154,7 @@ impl<T: ?Sized> FindVisitorWithWarning<T> for HashMap<String, Box<T>> {
         let result = self.get_mut(target);
 
         if result.is_none() {
-            eprintln!("Warning: No visitor registered for annotation target '{}'", target);
+            println!("cargo::warning=Warning: No visitor registered for annotation target '{}'", target);
         }
 
         result
