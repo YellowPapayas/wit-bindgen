@@ -18,7 +18,8 @@ mod bindgen;
 mod interface;
 
 pub mod annotation_visitor;
-pub use annotation_visitor::RustVisitor;
+pub use annotation_visitor::{RustContributions, RustVisitor};
+use wit_bindgen_core::Visitor;
 
 struct InterfaceName {
     /// True when this interface name has been remapped through the use of `with` in the `bindgen!`
@@ -57,7 +58,7 @@ struct RustWasm {
     future_payloads: IndexMap<String, String>,
     stream_payloads: IndexMap<String, String>,
 
-    visitor_map: HashMap<String, Box<dyn RustVisitor>>,
+    visitor_map: HashMap<String, Box<dyn Visitor<Contributions = RustContributions>>>,
 }
 
 #[derive(Default)]
@@ -283,7 +284,7 @@ pub struct Opts {
 
     #[cfg_attr(feature = "serde", serde(skip))]
     #[cfg_attr(feature = "clap", clap(skip))]
-    pub visitors: Vec<Box<dyn RustVisitor>>,
+    pub visitors: Vec<Box<dyn Visitor<Contributions = RustContributions>>>,
 }
 
 impl Opts {
