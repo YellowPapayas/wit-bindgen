@@ -18,9 +18,6 @@ impl ContributionTypes for RustContributions {
     type Module = RustModuleContribution;
 }
 
-/// Rust-specific visitor trait.
-/// Automatically implemented for any type that implements Visitor with RustContributions.
-pub trait RustVisitor: Visitor<Contributions = RustContributions> {}
-
-// Any type that implements Visitor with RustContributions automatically implements RustVisitor
-impl<T> RustVisitor for T where T: Visitor<Contributions = RustContributions> {}
+/// Rust-specific visitor type alias.
+/// This is just a convenient alias for Visitor with RustContributions.
+pub type RustVisitor = dyn Visitor<Contributions = RustContributions>;

@@ -145,22 +145,18 @@ pub trait Visitor {
     }
 }
 
-pub trait FindVisitorWithWarning {
-    type ContribType: ContributionTypes;
-    
-    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<dyn Visitor<Contributions = Self::ContribType>>>;
+pub trait FindVisitorWithWarning<T: ?Sized> {
+    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<T>>;
 }
 
-impl<C: ContributionTypes> FindVisitorWithWarning for HashMap<String, Box<dyn Visitor<Contributions = C>>> {
-    type ContribType = C;
-    
-    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<dyn Visitor<Contributions = C>>> {
+impl<T: ?Sized> FindVisitorWithWarning<T> for HashMap<String, Box<T>> {
+    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<T>> {
         let result = self.get_mut(target);
-        
+
         if result.is_none() {
             eprintln!("Warning: No visitor registered for annotation target '{}'", target);
         }
-        
+
         result
     }
 }
