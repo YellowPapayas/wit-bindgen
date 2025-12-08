@@ -146,14 +146,18 @@ pub trait Visitor {
 }
 
 pub trait FindVisitorWithWarning<T: ?Sized> {
-    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<T>>;
+    const DEFAULT_WARNING: bool = true;
+    
+    fn find_visitor_with_warning(&mut self, target: &str, warn: Option<bool>) -> Option<&mut Box<T>>;
 }
 
 impl<T: ?Sized> FindVisitorWithWarning<T> for HashMap<String, Box<T>> {
-    fn find_visitor_with_warning(&mut self, target: &str) -> Option<&mut Box<T>> {
+    fn find_visitor_with_warning(&mut self, target: &str, warn: Option<bool>) -> Option<&mut Box<T>> {
+        let print_warning = warn.unwrap_or(Self::DEFAULT_WARNING);
+        
         let result = self.get_mut(target);
 
-        if result.is_none() {
+        if print_warning && result.is_none() {
             println!("cargo::warning=Warning: No visitor registered for annotation target '{}'", target);
         }
 
