@@ -17,6 +17,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::mem;
 use wit_bindgen_core::abi::{self, AbiVariant, LiftLower};
+use wit_bindgen_core::visitor::FindVisitorWithWarning;
 use wit_bindgen_core::{
     dealias, uwrite, uwriteln, wit_parser::*, AnonymousTypeGenerator, Source, TypeInfo,
 };
@@ -159,7 +160,7 @@ impl<'i> InterfaceGenerator<'i> {
             for (func_name, func) in &self.resolve.interfaces[id].functions {
                 let mut contributions = vec![];
                 for (target, value) in func.annotations.iter() {
-                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                    if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(target, None) {
                         if let Some(contrib) = visitor.visit_function(value, func) {
                             contributions.push(contrib);
                         }
@@ -410,7 +411,7 @@ macro_rules! {macro_name} {{
                 for (func_name, func) in &self.resolve.interfaces[*id].functions {
                     let mut contributions = vec![];
                     for (target, value) in func.annotations.iter() {
-                        if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                        if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(target, None) {
                             if let Some(contrib) = visitor.visit_function(value, func) {
                                 contributions.push(contrib);
                             }
@@ -528,7 +529,7 @@ macro_rules! {macro_name} {{
             // (Annotations are key-value pairs where the key identifies which visitor should handle it)
             for (target, value) in interface.annotations.iter() {
                 // Look up the visitor registered for this annotation target
-                if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(target, None) {
                     // Let the visitor inspect the interface and generate code contributions
                     if let Some(contrib) = visitor.visit_interface(value, Some(interface)) {
                         // Merge this visitor's use statements into our accumulated set
@@ -1274,7 +1275,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             // for more details.
             uwrite!(
                 self.src,
-                "#[cfg(target_arch=\"wasm32\")]\n{run_ctors_once}();",
+                "#[cfg(target_arch=\"wasm32\")]\n{run_ctors_once}();\n",
             );
         }
 
@@ -2173,12 +2174,11 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
             let mut type_contributions: Vec<RustTypeContribution> = vec![];
 
             for (annotation_target, annotation_value) in self.resolve.types[id].annotations.iter() {
-                if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
+                if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(annotation_target, None) {
                     if let Some(contribution) = visitor.visit_record(annotation_value, record, id) {
                         type_contributions.push(contribution);
                     }
                 }
-                // TODO: maybe add a warning when there is no match for an annotation
             }
 
             self.rustdoc(docs);
@@ -2233,14 +2233,13 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 let mut field_contributions: Vec<RustFieldContribution> = vec![];
 
                 for (annotation_target, annotation_value) in field.annotations.iter() {
-                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
+                    if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(annotation_target, None) {
                         if let Some(contrib) =
                             visitor.visit_field(annotation_value, field, field_idx)
                         {
                             field_contributions.push(contrib);
                         }
                     }
-                    // TODO: maybe add a warning when there is no match for an annotation
                 }
 
                 self.rustdoc(&field.docs);
@@ -2350,14 +2349,13 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                 for (annotation_target, annotation_value) in
                     self.resolve.types[id].annotations.iter()
                 {
-                    if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
+                    if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(annotation_target, None) {
                         if let Some(contribution) =
                             visitor.visit_variant(annotation_value, variant, id)
                         {
                             type_contributions.push(contribution);
                         }
                     }
-                    // TODO: maybe add a warning when there is no match for an annotation
                 }
             }
 
@@ -2419,7 +2417,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
                     for (annotation_target, annotation_value) in
                         self.resolve.types[id].annotations.iter()
                     {
-                        if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
+                        if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(annotation_target, None) {
                             if let Some(contribution) = visitor.visit_variant_case(
                                 annotation_value,
                                 &v.cases[_case_idx],
@@ -2593,12 +2591,11 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
         let mut enum_contributions: Vec<RustTypeContribution> = vec![];
 
         for (annotation_target, annotation_value) in self.resolve.types[id].annotations.iter() {
-            if let Some(visitor) = self.r#gen.visitor_map.get_mut(annotation_target) {
+            if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(annotation_target, None) {
                 if let Some(contribution) = visitor.visit_enum(annotation_value, enum_, id) {
                     enum_contributions.push(contribution);
                 }
             }
-            // TODO: maybe add a warning when there is no match for an annotation
         }
 
         // We use a BTree set to make sure we don't have any duplicates and a stable order
@@ -2634,7 +2631,7 @@ unsafe fn call_import(&self, _params: Self::ParamsLower, _results: *mut u8) -> u
 
             // Emit visitor-contributed case attributes for enum cases
             for (target, value) in case.annotations.iter() {
-                if let Some(visitor) = self.r#gen.visitor_map.get_mut(target) {
+                if let Some(visitor) = self.r#gen.visitor_map.find_visitor_with_warning(target, None) {
                     // Create a Case from EnumCase for the visitor
                     let variant_case = Case {
                         name: case.name.clone(),
